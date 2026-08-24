@@ -85,34 +85,28 @@ FarmTab:AddToggle({
     Default = false,
     Callback = function(Value)
         autoCollect = Value
-        while autoCollect do
-            task.wait(0.5)
-            -- Loop through workspace to find eggs
-            for _, item in pairs(workspace:GetDescendants()) do
-                if item.Name == "Egg" and item:IsA("BasePart") then
-                    -- Teleport character to the egg to trigger touch interest
-                    local char = LocalPlayer.Character
-                    if char and char:FindFirstChild("HumanoidRootPart") then
-                        char.HumanoidRootPart.CFrame = item.CFrame
-                        task.wait(0.2) -- Small delay to allow collection to register
+        
+        -- Wrap the loop in task.spawn so it doesn't freeze the UI
+        if autoCollect then
+            task.spawn(function()
+                while autoCollect do
+                    task.wait(0.5)
+                    
+                    -- It is highly recommended to replace 'workspace' with the specific folder 
+                    -- if the game uses one, e.g., workspace.Eggs:GetChildren()
+                    for _, item in pairs(workspace:GetDescendants()) do
+                        if not autoCollect then break end -- Exit immediately if toggled off
+                        
+                        if item.Name == "Egg" and item:IsA("BasePart") then
+                            local char = LocalPlayer.Character
+                            if char and char:FindFirstChild("HumanoidRootPart") then
+                                char.HumanoidRootPart.CFrame = item.CFrame
+                                task.wait(0.1) -- Yield slightly to allow server to register the touch
+                            end
+                        end
                     end
                 end
-            end
-        end
-    end    
-})
-
-FarmTab:AddButton({
-    Name = "Spawn Egg",
-    Callback = function()
-        -- Attempt to find and fire the spawn remote event
-        local replicateStorage = game:GetService("ReplicatedStorage")
-        local spawnEvent = replicateStorage:FindFirstChild("SpawnEggEvent") -- Placeholder name
-        
-        if spawnEvent and spawnEvent:IsA("RemoteEvent") then
-            spawnEvent:FireServer()
-        else
-            print("Spawn event not found. Need exact RemoteEvent name.")
+            end)
         end
     end    
 })
