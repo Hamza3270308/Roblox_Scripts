@@ -20,10 +20,10 @@ local PetsTab = Window:CreateTab("Pets", "gitlab")
 local PlayerTab = Window:CreateTab("Player", "user")
 
 -- Variables to control loops
-local _G.AutoSteal = false
-local _G.AutoCollect = false
-local _G.AutoUpgradeSpeed = false
-local _G.AutoFuse = false
+_G.AutoSteal = false
+_G.AutoCollect = false
+_G.AutoUpgradeSpeed = false
+_G.AutoFuse = false
 
 -- ==========================================
 -- AUTO FARM TAB
