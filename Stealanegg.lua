@@ -1,117 +1,164 @@
--- Hami Hub - Delta/Emulator Optimized
-repeat task.wait() until game:IsLoaded()
+-- Load Rayfield UI Library
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
-
--- Wrap the UI loader in a pcall so Delta doesn't crash if the request fails
-local success, OrionLib = pcall(function()
-    return loadstring(game:HttpGet(('https://raw.githubusercontent.com/shlexware/Orion/main/source')))()
-end)
-
-if not success or not OrionLib then
-    warn("Hami Hub Error: Delta failed to fetch the UI library.")
-    return
-end
-
-local Window = OrionLib:MakeWindow({
-    Name = "Hami Hub - Steal An Egg",
-    HidePremium = true,
-    SaveConfig = false,
-    IntroText = "Hami Hub Loading...",
-    Color = Color3.fromRGB(0, 255, 0)
+-- Create Window
+local Window = Rayfield:CreateWindow({
+   Name = "Ronix Hub | Steal An Egg",
+   LoadingTitle = "Loading Script...",
+   LoadingSubtitle = "Automating the Grind",
+   ConfigurationSaving = {
+      Enabled = false,
+      FileName = "StealAnEggHub"
+   },
+   KeySystem = false
 })
 
-local PlayerTab = Window:MakeTab({ Name = "Player", Icon = "rbxassetid://4483345998", PremiumOnly = false })
-local FarmTab = Window:MakeTab({ Name = "Egg Farming", Icon = "rbxassetid://4483345998", PremiumOnly = false })
+-- Create Tabs based on Game Mechanics
+local AutoFarmTab = Window:CreateTab("Auto Farm", "shopping-cart")
+local UpgradesTab = Window:CreateTab("Upgrades", "trending-up")
+local PetsTab = Window:CreateTab("Pets", "gitlab")
+local PlayerTab = Window:CreateTab("Player", "user")
+
+-- Variables to control loops
+local _G.AutoSteal = false
+local _G.AutoCollect = false
+local _G.AutoUpgradeSpeed = false
+local _G.AutoFuse = false
 
 -- ==========================================
--- 1. PLAYER TAB
+-- AUTO FARM TAB
 -- ==========================================
 
-PlayerTab:AddSlider({
-    Name = "Walkspeed Bypass",
-    Min = 16,
-    Max = 300,
-    Default = 16,
-    Color = Color3.fromRGB(0, 255, 0),
-    Increment = 1,
-    ValueName = "Speed",
-    Callback = function(Value)
-        local char = LocalPlayer.Character
-        if char and char:FindFirstChildOfClass("Humanoid") then
-            char:FindFirstChildOfClass("Humanoid").WalkSpeed = Value
-        end
-    end    
-})
+AutoFarmTab:CreateSection("Egg Stealing")
 
--- ==========================================
--- 2. EGG FARMING TAB (Optimized for Emulators)
--- ==========================================
-
-local eggCache = {}
-local autoFarm = false
-
--- Function to safely locate eggs without crashing Delta
-local function refreshEggCache()
-    table.clear(eggCache)
-    for _, item in pairs(workspace:GetDescendants()) do
-        -- Looks for models or parts named "Egg" or "Nest"
-        if string.find(string.lower(item.Name), "egg") or string.find(string.lower(item.Name), "nest") then
-            if item:IsA("Model") and item.PrimaryPart then
-                table.insert(eggCache, item.PrimaryPart)
-            elseif item:IsA("BasePart") then
-                table.insert(eggCache, item)
-            end
-        end
-    end
-    OrionLib:MakeNotification({Name = "Cache Updated", Content = "Found " .. #eggCache .. " egg locations.", Time = 3})
-end
-
-FarmTab:AddButton({
-    Name = "Refresh Map Egg Locations",
-    Callback = function()
-        refreshEggCache()
-    end    
-})
-
-FarmTab:AddToggle({
-    Name = "Auto Steal & Return (Requires Cache)",
-    Default = false,
-    Callback = function(Value)
-        autoFarm = Value
+local AutoStealToggle = AutoFarmTab:CreateToggle({
+   Name = "Auto Steal Eggs",
+   CurrentValue = false,
+   Flag = "AutoStealToggle",
+   Callback = function(Value)
+        _G.AutoSteal = Value
         
-        if autoFarm then
-            if #eggCache == 0 then
-                refreshEggCache()
-            end
-            
-            -- Runs in a separate thread so Delta's UI doesn't freeze
+        if _G.AutoSteal then
             task.spawn(function()
-                while autoFarm do
-                    for _, targetPart in pairs(eggCache) do
-                        if not autoFarm then break end
-                        
-                        local char = LocalPlayer.Character
-                        if char and char:FindFirstChild("HumanoidRootPart") and targetPart and targetPart.Parent then
-                            
-                            -- 1. Teleport to the Egg/Nest
-                            char.HumanoidRootPart.CFrame = targetPart.CFrame * CFrame.new(0, 2, 0)
-                            task.wait(1) -- Wait for pickup
-                            
-                            -- 2. Teleport back to Base (Pen)
-                            local spawnPoint = workspace:FindFirstChild("SpawnLocation", true) 
-                            if spawnPoint then
-                                char.HumanoidRootPart.CFrame = spawnPoint.CFrame * CFrame.new(0, 3, 0)
-                                task.wait(1) -- Wait for drop-off / hatch
-                            end
-                        end
-                    end
-                    task.wait(2) -- Pause before restarting the loop
+                while _G.AutoSteal do
+                    task.wait(0.5) -- Adjust speed to prevent kicks
+                    
+                    -- [STEP 1: TELEPORT TO EGG]
+                    -- Example: game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = workspace.Map.Eggs.Spawn1.CFrame
+                    
+                    -- [STEP 2: FIRE PROXIMITY PROMPT OR REMOTE TO GRAB EGG]
+                    -- Example: fireproximityprompt(workspace.Map.Eggs.Spawn1.ProximityPrompt)
+                    
+                    task.wait(0.5)
+                    
+                    -- [STEP 3: TELEPORT BACK TO BASE]
+                    -- Example: game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = workspace.Tycoons.MyTycoon.BasePad.CFrame
+                    
+                    -- [STEP 4: HATCH/DEPOSIT EGG]
+                    -- Example: game:GetService("ReplicatedStorage").RemoteEvents.DepositEgg:FireServer()
                 end
             end)
         end
-    end    
+   end,
 })
 
-OrionLib:Init()
+AutoFarmTab:CreateSection("Income")
+
+local AutoCollectToggle = AutoFarmTab:CreateToggle({
+   Name = "Auto Collect Passive Income",
+   CurrentValue = false,
+   Flag = "AutoCollectToggle",
+   Callback = function(Value)
+        _G.AutoCollect = Value
+        
+        if _G.AutoCollect then
+            task.spawn(function()
+                while _G.AutoCollect do
+                    task.wait(2)
+                    -- [LOGIC TO COLLECT COINS FROM PET PEN]
+                    -- Example: game:GetService("ReplicatedStorage").RemoteEvents.CollectIncome:FireServer()
+                end
+            end)
+        end
+   end,
+})
+
+
+-- ==========================================
+-- UPGRADES TAB
+-- ==========================================
+
+UpgradesTab:CreateSection("Stat Upgrades")
+
+local AutoSpeedToggle = UpgradesTab:CreateToggle({
+   Name = "Auto Upgrade Speed (Spam Buy)",
+   CurrentValue = false,
+   Flag = "AutoSpeedToggle",
+   Callback = function(Value)
+        _G.AutoUpgradeSpeed = Value
+        
+        if _G.AutoUpgradeSpeed then
+            task.spawn(function()
+                while _G.AutoUpgradeSpeed do
+                    task.wait(1)
+                    -- [LOGIC TO FIRE SPEED UPGRADE REMOTE]
+                    -- Example: game:GetService("ReplicatedStorage").RemoteEvents.BuyUpgrade:FireServer("Speed")
+                end
+            end)
+        end
+   end,
+})
+
+
+-- ==========================================
+-- PETS TAB
+-- ==========================================
+
+PetsTab:CreateSection("Pet Management")
+
+local AutoFuseToggle = PetsTab:CreateToggle({
+   Name = "Auto Fuse Duplicate Pets",
+   CurrentValue = false,
+   Flag = "AutoFuseToggle",
+   Callback = function(Value)
+        _G.AutoFuse = Value
+        
+        if _G.AutoFuse then
+            task.spawn(function()
+                while _G.AutoFuse do
+                    task.wait(5) -- Fuse every 5 seconds
+                    -- [LOGIC TO GET DUPLICATE INVENTORY ITEMS AND SEND FUSE REQUEST]
+                    -- Example: game:GetService("ReplicatedStorage").RemoteEvents.FusePets:FireServer("Common", 5)
+                end
+            end)
+        end
+   end,
+})
+
+PetsTab:CreateButton({
+   Name = "Claim Group/Like Rewards",
+   Callback = function()
+        -- [LOGIC TO FIRE REWARD REMOTES]
+        -- Example: game:GetService("ReplicatedStorage").RemoteEvents.ClaimGroupReward:FireServer()
+        print("Attempted to claim starter boosts!")
+   end,
+})
+
+-- ==========================================
+-- PLAYER TAB (Anti-Cheat Bypasses / Movement)
+-- ==========================================
+PlayerTab:CreateSection("Movement")
+
+local WalkSpeedSlider = PlayerTab:CreateSlider({
+   Name = "Walk Speed Hack",
+   Range = {16, 300},
+   Increment = 1,
+   Suffix = " Speed",
+   CurrentValue = 16,
+   Flag = "WalkSpeed",
+   Callback = function(Value)
+        if game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChild("Humanoid") then
+            game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = Value
+        end
+   end,
+})
