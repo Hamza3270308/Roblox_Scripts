@@ -1,219 +1,187 @@
--- Load the Rayfield Library
-local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+-- Load a standard UI Library (Placeholder URL for a popular library like Rayfield/Orion)
+local Library = loadstring(game:HttpGet('https://raw.githubusercontent.com/shlexware/Orion/main/source'))()
 
--- Create the main window
-local Window = Rayfield:CreateWindow({
-   Name = "Hami Hub",
-   LoadingTitle = "Loading Hami Hub...",
-   LoadingSubtitle = "Steal An Egg",
-   ConfigurationSaving = {
-      Enabled = true,
-      FolderName = "HamiHub",
-      FileName = "StealAnEgg"
-   },
-   Discord = {
-      Enabled = false,
-   },
-   KeySystem = false
+-- Create the Main Window (matching the dark theme and green accents)
+local Window = Library:MakeWindow({
+    Name = "HAMI HUB", 
+    HidePremium = false, 
+    SaveConfig = true, 
+    ConfigFolder = "HamiHub",
+    IntroText = "Loading HAMI HUB..."
 })
 
----------------------------------------------------------
--- VARIABLES & SERVICES
----------------------------------------------------------
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
-local UserInputService = game:GetService("UserInputService")
-local RunService = game:GetService("RunService")
-
-local InfiniteJumpEnabled = false
-
--- Infinite Jump Logic
-UserInputService.JumpRequest:Connect(function()
-    if InfiniteJumpEnabled then
-        local character = LocalPlayer.Character
-        if character and character:FindFirstChildOfClass("Humanoid") then
-            character:FindFirstChildOfClass("Humanoid"):ChangeState(Enum.HumanoidStateType.Jumping)
-        end
-    end
-end)
-
----------------------------------------------------------
--- TAB 1: MAIN (AUTOMATION)
----------------------------------------------------------
-local MainTab = Window:CreateTab("Main", 4483362458) -- Icon ID
-local FarmSection = MainTab:CreateSection("Auto Farming")
-
-local AutoPlaceToggle = MainTab:CreateToggle({
-   Name = "Auto Place Egg",
-   CurrentValue = false,
-   Flag = "AutoPlace", 
-   Callback = function(Value)
-        -- [PLACEHOLDER]
-        -- Paste your Auto Place Egg RemoteEvent code below this line:
-        
-   end,
+-- ==========================================
+-- 1. TABS (Sidebar)
+-- ==========================================
+local MainTab = Window:MakeTab({
+    Name = "Main",
+    Icon = "rbxassetid://4483345998", -- Home Icon placeholder
+    PremiumOnly = false
 })
 
-local AutoRecoverToggle = MainTab:CreateToggle({
-   Name = "Auto Recover Egg",
-   CurrentValue = false,
-   Flag = "AutoRecover", 
-   Callback = function(Value)
-        -- [PLACEHOLDER]
-        -- Paste your Auto Recover Egg RemoteEvent code below this line:
-        
-   end,
+local PlayerTab = Window:MakeTab({
+    Name = "Player",
+    Icon = "rbxassetid://4483362458", -- Player Icon placeholder
+    PremiumOnly = false
 })
 
-local AutoSellToggle = MainTab:CreateToggle({
-   Name = "Auto Sell Egg",
-   CurrentValue = false,
-   Flag = "AutoSell", 
-   Callback = function(Value)
-        -- [PLACEHOLDER]
-        -- Paste your Auto Sell Egg RemoteEvent code below this line:
-        
-   end,
+local VisualsTab = Window:MakeTab({
+    Name = "Visuals",
+    Icon = "rbxassetid://4483362458", -- Visuals Icon placeholder
+    PremiumOnly = false
 })
 
-local AutoHatchToggle = MainTab:CreateToggle({
-   Name = "Auto Hatch",
-   CurrentValue = false,
-   Flag = "AutoHatch", 
-   Callback = function(Value)
-        -- [PLACEHOLDER]
-        -- Paste your Auto Hatch RemoteEvent code below this line:
-        
-   end,
+local CombatTab = Window:MakeTab({
+    Name = "Combat",
+    Icon = "rbxassetid://4483362458", -- Sword Icon placeholder
+    PremiumOnly = false
 })
 
-local ProgressionSection = MainTab:CreateSection("Progression")
-
-local AutoClaimToggle = MainTab:CreateToggle({
-   Name = "Auto Claim Rewards",
-   CurrentValue = false,
-   Flag = "AutoClaim", 
-   Callback = function(Value)
-        -- [PLACEHOLDER]
-        -- Paste your Auto Claim RemoteEvent code below this line:
-        
-   end,
+local SettingsTab = Window:MakeTab({
+    Name = "Settings",
+    Icon = "rbxassetid://4483345998", -- Gear Icon placeholder
+    PremiumOnly = false
 })
 
-local AutoRebirthToggle = MainTab:CreateToggle({
-   Name = "Auto Rebirth",
-   CurrentValue = false,
-   Flag = "AutoRebirth", 
-   Callback = function(Value)
-        -- [PLACEHOLDER]
-        -- Paste your Auto Rebirth RemoteEvent code below this line:
-        
-   end,
+-- ==========================================
+-- 2. MAIN TAB CONTENT
+-- ==========================================
+
+-- Left Column: Main Menu
+local MainMenuSection = MainTab:AddSection({
+    Name = "MAIN MENU"
 })
 
-local AutoUpgradeTreadmill = MainTab:CreateToggle({
-   Name = "Auto Upgrade Treadmill",
-   CurrentValue = false,
-   Flag = "AutoUpgradeTreadmill", 
-   Callback = function(Value)
-        -- [PLACEHOLDER]
-        -- Paste your Auto Upgrade Treadmill RemoteEvent code below this line:
-        
-   end,
+MainMenuSection:AddToggle({
+    Name = "Auto Hatch",
+    Default = true,
+    Callback = function(Value)
+        print("Auto Hatch toggled:", Value)
+    end    
 })
 
-local AutoUpgradeBase = MainTab:CreateToggle({
-   Name = "Auto Upgrade Base",
-   CurrentValue = false,
-   Flag = "AutoUpgradeBase", 
-   Callback = function(Value)
-        -- [PLACEHOLDER]
-        -- Paste your Auto Upgrade Base RemoteEvent code below this line:
-        
-   end,
+MainMenuSection:AddToggle({
+    Name = "Egg ESP",
+    Default = true,
+    Callback = function(Value)
+        print("Egg ESP toggled:", Value)
+    end    
 })
 
----------------------------------------------------------
--- TAB 2: PLAYER (WORKING FEATURES)
----------------------------------------------------------
-local PlayerTab = Window:CreateTab("Player", 4483362458) 
-local MovementSection = PlayerTab:CreateSection("Movement")
-
-local WalkSpeedSlider = PlayerTab:CreateSlider({
-   Name = "WalkSpeed",
-   Range = {16, 300},
-   Increment = 1,
-   Suffix = " Spd",
-   CurrentValue = 16,
-   Flag = "WalkSpeed", 
-   Callback = function(Value)
-        -- Fully Working WalkSpeed Modifier
-        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
-            LocalPlayer.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = Value
-        end
-   end,
+MainMenuSection:AddToggle({
+    Name = "Infinite Jump",
+    Default = true,
+    Callback = function(Value)
+        print("Infinite Jump toggled:", Value)
+    end    
 })
 
-local JumpPowerSlider = PlayerTab:CreateSlider({
-   Name = "Jump Power",
-   Range = {50, 300},
-   Increment = 1,
-   Suffix = " Pwr",
-   CurrentValue = 50,
-   Flag = "JumpPower", 
-   Callback = function(Value)
-        -- Fully Working JumpPower Modifier
-        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
-            LocalPlayer.Character:FindFirstChildOfClass("Humanoid").UseJumpPower = true
-            LocalPlayer.Character:FindFirstChildOfClass("Humanoid").JumpPower = Value
-        end
-   end,
+MainMenuSection:AddToggle({
+    Name = "No Clip",
+    Default = false,
+    Callback = function(Value)
+        print("No Clip toggled:", Value)
+    end    
 })
 
-local InfiniteJumpToggle = PlayerTab:CreateToggle({
-   Name = "Infinite Jump",
-   CurrentValue = false,
-   Flag = "InfJump", 
-   Callback = function(Value)
-        -- Fully Working Infinite Jump
-        InfiniteJumpEnabled = Value
-   end,
+MainMenuSection:AddToggle({
+    Name = "Teleport",
+    Default = false,
+    Callback = function(Value)
+        print("Teleport toggled:", Value)
+    end    
 })
 
----------------------------------------------------------
--- TAB 3: VISUALS
----------------------------------------------------------
-local VisualsTab = Window:CreateTab("Visuals", 4483362458)
-local ESPSection = VisualsTab:CreateSection("ESP & Boosts")
-
-local EggESPToggle = VisualsTab:CreateToggle({
-   Name = "Egg ESP",
-   CurrentValue = false,
-   Flag = "EggESP", 
-   Callback = function(Value)
-        -- [PLACEHOLDER]
-        -- Logic to draw boxes/highlights around eggs goes here.
-        -- Requires knowing the exact folder name where eggs are stored in the Workspace.
-        
-   end,
+-- Right Column / General Main Menu ESP features
+MainMenuSection:AddToggle({
+    Name = "ESP",
+    Default = true,
+    Callback = function(Value)
+        print("ESP toggled:", Value)
+    end    
 })
 
-local FPSBoostButton = VisualsTab:CreateButton({
-   Name = "Boost FPS (Removes Textures)",
-   Callback = function()
-        -- Fully Working FPS Boost (Removes Decals and Textures)
-        for _, v in pairs(workspace:GetDescendants()) do
-            if v:IsA("BasePart") and not v.Parent:FindFirstChild("Humanoid") then
-                v.Material = Enum.Material.SmoothPlastic
-                if v:IsA("Texture") or v:IsA("Decal") then
-                    v:Destroy()
-                end
-            end
-        end
-        game.Lighting.GlobalShadows = false
-        game.Lighting.FogEnd = 9e9
-   end,
+MainMenuSection:AddToggle({
+    Name = "Players",
+    Default = false,
+    Callback = function(Value)
+        print("Players toggled:", Value)
+    end    
 })
 
--- Load Configuration
-Rayfield:LoadConfiguration()
+MainMenuSection:AddToggle({
+    Name = "Items",
+    Default = false,
+    Callback = function(Value)
+        print("Items toggled:", Value)
+    end    
+})
+
+MainMenuSection:AddToggle({
+    Name = "Desostlation",
+    Default = false,
+    Callback = function(Value)
+        print("Desostlation toggled:", Value)
+    end    
+})
+
+-- Sliders
+MainMenuSection:AddSlider({
+    Name = "Player Speed",
+    Min = 0,
+    Max = 100,
+    Default = 75,
+    Color = Color3.fromRGB(0, 255, 100), -- Matching the bright green UI accent
+    Increment = 1,
+    ValueName = "%",
+    Callback = function(Value)
+        print("Player Speed changed to:", Value)
+    end    
+})
+
+MainMenuSection:AddSlider({
+    Name = "Jump Height",
+    Min = 0,
+    Max = 100,
+    Default = 50,
+    Color = Color3.fromRGB(0, 255, 100),
+    Increment = 1,
+    ValueName = "%",
+    Callback = function(Value)
+        print("Jump Height changed to:", Value)
+    end    
+})
+
+-- ==========================================
+-- 3. VISUAL MODS SECTION
+-- ==========================================
+local VisualModsSection = MainTab:AddSection({
+    Name = "VISUAL MODS"
+})
+
+VisualModsSection:AddToggle({
+    Name = "ESP",
+    Default = true,
+    Callback = function(Value)
+        print("Visual Mods ESP toggled:", Value)
+    end    
+})
+
+VisualModsSection:AddToggle({
+    Name = "Players",
+    Default = true,
+    Callback = function(Value)
+        print("Visual Mods Players toggled:", Value)
+    end    
+})
+
+VisualModsSection:AddToggle({
+    Name = "Items",
+    Default = true,
+    Callback = function(Value)
+        print("Visual Mods Items toggled:", Value)
+    end    
+})
+
+-- Initialize the UI Library
+Library:Init()
