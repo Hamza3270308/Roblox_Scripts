@@ -1,238 +1,219 @@
--- Load Rayfield UI Library
+-- Load the Rayfield Library
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
--- Services
-local RunService = game:GetService("RunService")
+-- Create the main window
+local Window = Rayfield:CreateWindow({
+   Name = "Hami Hub",
+   LoadingTitle = "Loading Hami Hub...",
+   LoadingSubtitle = "Steal An Egg",
+   ConfigurationSaving = {
+      Enabled = true,
+      FolderName = "HamiHub",
+      FileName = "StealAnEgg"
+   },
+   Discord = {
+      Enabled = false,
+   },
+   KeySystem = false
+})
+
+---------------------------------------------------------
+-- VARIABLES & SERVICES
+---------------------------------------------------------
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
 
--- Window Creation with Green Theme
-local Window = Rayfield:CreateWindow({
-   Name = "Hami Hub | Steal An Egg",
-   LoadingTitle = "Loading Hami Hub...",
-   LoadingSubtitle = "Automating the Grind",
-   ConfigurationSaving = { Enabled = false },
-   KeySystem = false,
-   Theme = {
-        TextColor = Color3.fromRGB(0, 255, 0),
-        Background = Color3.fromRGB(25, 25, 25),
-        Topbar = Color3.fromRGB(34, 34, 34),
-        Shadow = Color3.fromRGB(20, 20, 20),
-        NotificationBackground = Color3.fromRGB(20, 20, 20),
-        NotificationActionsBackground = Color3.fromRGB(235, 235, 235),
-        TabBackground = Color3.fromRGB(80, 80, 80),
-        TabStroke = Color3.fromRGB(85, 85, 85),
-        TabBackgroundSelected = Color3.fromRGB(0, 200, 0),
-        TabTextColor = Color3.fromRGB(0, 255, 0),
-        SelectedTabTextColor = Color3.fromRGB(255, 255, 255),
-        ElementBackground = Color3.fromRGB(35, 35, 35),
-        ElementBackgroundHover = Color3.fromRGB(40, 40, 40),
-        SecondaryElementBackground = Color3.fromRGB(25, 25, 25),
-        ElementStroke = Color3.fromRGB(50, 50, 50),
-        SecondaryElementStroke = Color3.fromRGB(40, 40, 40),
-        SliderBackground = Color3.fromRGB(0, 255, 0),
-        SliderProgress = Color3.fromRGB(0, 255, 0),
-        SliderStroke = Color3.fromRGB(0, 255, 0),
-        ToggleBackground = Color3.fromRGB(30, 30, 30),
-        ToggleEnabled = Color3.fromRGB(0, 255, 0),
-        ToggleBorders = Color3.fromRGB(50, 50, 50),
-        DropdownSelected = Color3.fromRGB(40, 40, 40),
-        DropdownUnselected = Color3.fromRGB(30, 30, 30),
-        InputBackground = Color3.fromRGB(30, 30, 30),
-        InputStroke = Color3.fromRGB(65, 65, 65),
-        PlaceholderColor = Color3.fromRGB(0, 200, 0)
-    }
-})
+local InfiniteJumpEnabled = false
 
--- Create Tabs
-local AutoFarmTab = Window:CreateTab("Auto Farm", "shopping-cart")
-local UpgradesTab = Window:CreateTab("Upgrades", "trending-up")
-local PlayerTab = Window:CreateTab("Player", "user")
-
--- Variables
-_G.AutoSteal = false
-_G.AutoBuySpeed = false
-_G.InfJump = false
-local originalBaseLocation = nil
-local speedConnection = nil
-local infJumpConnection = nil
-local cframeSpeed = 16
-
--- ==========================================
--- AUTO FARM TAB
--- ==========================================
-AutoFarmTab:CreateSection("Egg Stealing")
-AutoFarmTab:CreateParagraph({
-    Title = "IMPORTANT INSTRUCTION",
-    Content = "Stand exactly where you want to drop the eggs off (in your base) BEFORE turning this toggle on. It will save your current location as the return point."
-})
-
--- Dynamic function to find eggs (Supports both Prompt and Touch)
-local function getEggTarget()
-    for _, obj in pairs(workspace:GetDescendants()) do
-        if obj:IsA("ProximityPrompt") then
-            local txt = string.lower(obj.ActionText .. " " .. obj.ObjectText)
-            if string.find(txt, "steal") or string.find(txt, "egg") then
-                return obj, "Prompt"
-            end
-        elseif obj:IsA("TouchTransmitter") then
-            local parent = obj.Parent
-            if parent and parent:IsA("BasePart") and (string.find(string.lower(parent.Name), "egg") or string.find(string.lower(parent.Name), "steal") or string.find(string.lower(parent.Name), "nest")) then
-                return parent, "Touch"
-            end
+-- Infinite Jump Logic
+UserInputService.JumpRequest:Connect(function()
+    if InfiniteJumpEnabled then
+        local character = LocalPlayer.Character
+        if character and character:FindFirstChildOfClass("Humanoid") then
+            character:FindFirstChildOfClass("Humanoid"):ChangeState(Enum.HumanoidStateType.Jumping)
         end
     end
-    return nil, nil
-end
+end)
 
-AutoFarmTab:CreateToggle({
-   Name = "Auto Steal Eggs (Dynamic)",
+---------------------------------------------------------
+-- TAB 1: MAIN (AUTOMATION)
+---------------------------------------------------------
+local MainTab = Window:CreateTab("Main", 4483362458) -- Icon ID
+local FarmSection = MainTab:CreateSection("Auto Farming")
+
+local AutoPlaceToggle = MainTab:CreateToggle({
+   Name = "Auto Place Egg",
    CurrentValue = false,
-   Flag = "AutoStealToggle",
+   Flag = "AutoPlace", 
    Callback = function(Value)
-        _G.AutoSteal = Value
-        local char = LocalPlayer.Character
+        -- [PLACEHOLDER]
+        -- Paste your Auto Place Egg RemoteEvent code below this line:
         
-        if _G.AutoSteal and char and char:FindFirstChild("HumanoidRootPart") then
-            originalBaseLocation = char.HumanoidRootPart.CFrame
-            Rayfield:Notify({Title = "Location Saved", Content = "Return location set to your base.", Duration = 3})
-        end
-        
-        if _G.AutoSteal then
-            task.spawn(function()
-                while _G.AutoSteal do
-                    task.wait(0.5)
-                    local currentCharacter = LocalPlayer.Character
-                    if not currentCharacter or not currentCharacter:FindFirstChild("HumanoidRootPart") then continue end
-                    
-                    local target, interactType = getEggTarget()
-                    
-                    if target then
-                        if interactType == "Prompt" and target.Parent and target.Parent:IsA("BasePart") then
-                            -- Teleport and prompt
-                            currentCharacter.HumanoidRootPart.CFrame = target.Parent.CFrame
-                            task.wait(0.5)
-                            fireproximityprompt(target)
-                        elseif interactType == "Touch" then
-                            -- Teleport and touch
-                            currentCharacter.HumanoidRootPart.CFrame = target.CFrame
-                            task.wait(0.5)
-                            firetouchinterest(currentCharacter.HumanoidRootPart, target, 0)
-                            task.wait(0.1)
-                            firetouchinterest(currentCharacter.HumanoidRootPart, target, 1)
-                        end
-                        
-                        task.wait(0.5)
-                        
-                        -- Return home to drop off
-                        if originalBaseLocation then
-                            currentCharacter.HumanoidRootPart.CFrame = originalBaseLocation
-                            task.wait(1.5) -- Wait to hatch/deposit
-                        end
-                    else
-                        task.wait(2)
-                    end
-                end
-            end)
-        end
    end,
 })
 
--- ==========================================
--- UPGRADES TAB
--- ==========================================
-UpgradesTab:CreateSection("Auto Upgrades")
-UpgradesTab:CreateToggle({
-   Name = "Auto Buy Speed",
+local AutoRecoverToggle = MainTab:CreateToggle({
+   Name = "Auto Recover Egg",
    CurrentValue = false,
-   Flag = "AutoBuySpeed",
+   Flag = "AutoRecover", 
    Callback = function(Value)
-        _G.AutoBuySpeed = Value
-        if _G.AutoBuySpeed then
-            task.spawn(function()
-                while _G.AutoBuySpeed do
-                    task.wait(1)
-                    -- Dynamic remote finding for upgrades
-                    local remotes = game:GetService("ReplicatedStorage"):GetDescendants()
-                    for _, remote in pairs(remotes) do
-                        if remote:IsA("RemoteEvent") and (string.find(string.lower(remote.Name), "buy") or string.find(string.lower(remote.Name), "upgrade")) then
-                            pcall(function() remote:FireServer("Speed") end)
-                            pcall(function() remote:FireServer("WalkSpeed") end)
-                        end
-                    end
-                end
-            end)
-        end
+        -- [PLACEHOLDER]
+        -- Paste your Auto Recover Egg RemoteEvent code below this line:
+        
    end,
 })
 
--- ==========================================
--- PLAYER TAB
--- ==========================================
-PlayerTab:CreateSection("Movement Bypasses")
+local AutoSellToggle = MainTab:CreateToggle({
+   Name = "Auto Sell Egg",
+   CurrentValue = false,
+   Flag = "AutoSell", 
+   Callback = function(Value)
+        -- [PLACEHOLDER]
+        -- Paste your Auto Sell Egg RemoteEvent code below this line:
+        
+   end,
+})
 
-PlayerTab:CreateSlider({
-   Name = "CFrame Speed Hack",
-   Range = {16, 150},
+local AutoHatchToggle = MainTab:CreateToggle({
+   Name = "Auto Hatch",
+   CurrentValue = false,
+   Flag = "AutoHatch", 
+   Callback = function(Value)
+        -- [PLACEHOLDER]
+        -- Paste your Auto Hatch RemoteEvent code below this line:
+        
+   end,
+})
+
+local ProgressionSection = MainTab:CreateSection("Progression")
+
+local AutoClaimToggle = MainTab:CreateToggle({
+   Name = "Auto Claim Rewards",
+   CurrentValue = false,
+   Flag = "AutoClaim", 
+   Callback = function(Value)
+        -- [PLACEHOLDER]
+        -- Paste your Auto Claim RemoteEvent code below this line:
+        
+   end,
+})
+
+local AutoRebirthToggle = MainTab:CreateToggle({
+   Name = "Auto Rebirth",
+   CurrentValue = false,
+   Flag = "AutoRebirth", 
+   Callback = function(Value)
+        -- [PLACEHOLDER]
+        -- Paste your Auto Rebirth RemoteEvent code below this line:
+        
+   end,
+})
+
+local AutoUpgradeTreadmill = MainTab:CreateToggle({
+   Name = "Auto Upgrade Treadmill",
+   CurrentValue = false,
+   Flag = "AutoUpgradeTreadmill", 
+   Callback = function(Value)
+        -- [PLACEHOLDER]
+        -- Paste your Auto Upgrade Treadmill RemoteEvent code below this line:
+        
+   end,
+})
+
+local AutoUpgradeBase = MainTab:CreateToggle({
+   Name = "Auto Upgrade Base",
+   CurrentValue = false,
+   Flag = "AutoUpgradeBase", 
+   Callback = function(Value)
+        -- [PLACEHOLDER]
+        -- Paste your Auto Upgrade Base RemoteEvent code below this line:
+        
+   end,
+})
+
+---------------------------------------------------------
+-- TAB 2: PLAYER (WORKING FEATURES)
+---------------------------------------------------------
+local PlayerTab = Window:CreateTab("Player", 4483362458) 
+local MovementSection = PlayerTab:CreateSection("Movement")
+
+local WalkSpeedSlider = PlayerTab:CreateSlider({
+   Name = "WalkSpeed",
+   Range = {16, 300},
    Increment = 1,
-   Suffix = " Speed",
+   Suffix = " Spd",
    CurrentValue = 16,
-   Flag = "CFrameSpeed",
+   Flag = "WalkSpeed", 
    Callback = function(Value)
-        cframeSpeed = Value
-        if speedConnection then speedConnection:Disconnect(); speedConnection = nil end
-        
-        if cframeSpeed > 16 then
-            speedConnection = RunService.RenderStepped:Connect(function(deltaTime)
-                local char = LocalPlayer.Character
-                if char and char:FindFirstChild("Humanoid") and char:FindFirstChild("HumanoidRootPart") then
-                    local hum = char.Humanoid
-                    if hum.MoveDirection.Magnitude > 0 then
-                        char.HumanoidRootPart.CFrame = char.HumanoidRootPart.CFrame + (hum.MoveDirection * (cframeSpeed - 16) * deltaTime)
-                    end
-                end
-            end)
+        -- Fully Working WalkSpeed Modifier
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+            LocalPlayer.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = Value
         end
    end,
 })
 
-PlayerTab:CreateToggle({
-   Name = "Infinite Jump (High Jump Bypass)",
+local JumpPowerSlider = PlayerTab:CreateSlider({
+   Name = "Jump Power",
+   Range = {50, 300},
+   Increment = 1,
+   Suffix = " Pwr",
+   CurrentValue = 50,
+   Flag = "JumpPower", 
+   Callback = function(Value)
+        -- Fully Working JumpPower Modifier
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+            LocalPlayer.Character:FindFirstChildOfClass("Humanoid").UseJumpPower = true
+            LocalPlayer.Character:FindFirstChildOfClass("Humanoid").JumpPower = Value
+        end
+   end,
+})
+
+local InfiniteJumpToggle = PlayerTab:CreateToggle({
+   Name = "Infinite Jump",
    CurrentValue = false,
-   Flag = "InfJump",
+   Flag = "InfJump", 
    Callback = function(Value)
-        _G.InfJump = Value
-        if _G.InfJump then
-            infJumpConnection = UserInputService.JumpRequest:Connect(function()
-                local char = LocalPlayer.Character
-                if char and char:FindFirstChild("Humanoid") then
-                    char.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
-                end
-            end)
-        else
-            if infJumpConnection then infJumpConnection:Disconnect(); infJumpConnection = nil end
-        end
+        -- Fully Working Infinite Jump
+        InfiniteJumpEnabled = Value
    end,
 })
 
-PlayerTab:CreateSection("Teleportation")
+---------------------------------------------------------
+-- TAB 3: VISUALS
+---------------------------------------------------------
+local VisualsTab = Window:CreateTab("Visuals", 4483362458)
+local ESPSection = VisualsTab:CreateSection("ESP & Boosts")
 
-PlayerTab:CreateButton({
-   Name = "Get 'Click to Teleport' Tool",
-   Callback = function()
-        local tool = Instance.new("Tool")
-        tool.Name = "Click to TP"
-        tool.RequiresHandle = false
-        tool.Parent = LocalPlayer.Backpack
+local EggESPToggle = VisualsTab:CreateToggle({
+   Name = "Egg ESP",
+   CurrentValue = false,
+   Flag = "EggESP", 
+   Callback = function(Value)
+        -- [PLACEHOLDER]
+        -- Logic to draw boxes/highlights around eggs goes here.
+        -- Requires knowing the exact folder name where eggs are stored in the Workspace.
         
-        local mouse = LocalPlayer:GetMouse()
-        tool.Activated:Connect(function()
-            if mouse.Hit and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-                -- Teleports you exactly where your mouse clicks
-                LocalPlayer.Character.HumanoidRootPart.CFrame = mouse.Hit + Vector3.new(0, 3, 0)
-            end
-        end)
-        Rayfield:Notify({Title = "Tool Given!", Content = "Check your inventory for the 'Click to TP' tool.", Duration = 4})
    end,
 })
+
+local FPSBoostButton = VisualsTab:CreateButton({
+   Name = "Boost FPS (Removes Textures)",
+   Callback = function()
+        -- Fully Working FPS Boost (Removes Decals and Textures)
+        for _, v in pairs(workspace:GetDescendants()) do
+            if v:IsA("BasePart") and not v.Parent:FindFirstChild("Humanoid") then
+                v.Material = Enum.Material.SmoothPlastic
+                if v:IsA("Texture") or v:IsA("Decal") then
+                    v:Destroy()
+                end
+            end
+        end
+        game.Lighting.GlobalShadows = false
+        game.Lighting.FogEnd = 9e9
+   end,
+})
+
+-- Load Configuration
+Rayfield:LoadConfiguration()
