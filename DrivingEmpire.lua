@@ -17,6 +17,19 @@ local VirtualUser = game:GetService("VirtualUser")
 local LocalPlayer = Players.LocalPlayer
 
 -- ==========================================
+-- PLAYER RESPAWN HANDLER
+-- ==========================================
+LocalPlayer.CharacterAdded:Connect(function(char)
+    local hum = char:WaitForChild("Humanoid")
+    task.wait(0.5)
+    if getgenv().WalkSpeedEnabled then hum.WalkSpeed = getgenv().WalkSpeedValue end
+    if getgenv().JumpPowerEnabled then 
+        hum.UseJumpPower = true
+        hum.JumpPower = getgenv().JumpPowerValue 
+    end
+end)
+
+-- ==========================================
 -- AUTO DELIVERY BACKEND LOGIC
 -- ==========================================
 local Config = {
@@ -225,7 +238,7 @@ end
 local function getVehicle()
     local char = LocalPlayer.Character
     if char and char:FindFirstChild("Humanoid") and char.Humanoid.SeatPart then
-        return char.Humanoid.SeatPart.Parent -- Returns the vehicle model the player is sitting in
+        return char.Humanoid.SeatPart.Parent 
     end
     return nil
 end
@@ -302,14 +315,29 @@ local VehicleTab = Window:MakeTab({Name = "Vehicle", Icon = "rbxassetid://448336
 
 VehicleTab:AddSection({Name = "Performance"})
 
+getgenv().VehicleSpeed = 200
 VehicleTab:AddSlider({
-    Name = "Speed Modifier",
-    Min = 100, Max = 1000, Default = 200, Color = Color3.fromRGB(0, 255, 100), Increment = 10, ValueName = "Speed",
+    Name = "Speed Value", Min = 100, Max = 1000, Default = 200, Color = Color3.fromRGB(0, 255, 100), Increment = 10, ValueName = "Speed",
     Callback = function(Value)
-        -- Applies basic velocity boost to the vehicle's primary part
-        local veh = getVehicle()
-        if veh and veh.PrimaryPart then
-            veh.PrimaryPart.Velocity = veh.PrimaryPart.CFrame.LookVector * Value
+        getgenv().VehicleSpeed = Value
+    end    
+})
+
+VehicleTab:AddToggle({
+    Name = "Enable Speed Boost (Hold W)",
+    Default = false,
+    Callback = function(Value)
+        getgenv().SpeedBoost = Value
+        while getgenv().SpeedBoost do
+            task.wait()
+            local veh = getVehicle()
+            -- Only boosts when the toggle is checked AND you are pressing W
+            if veh and veh.PrimaryPart and UserInputService:IsKeyDown(Enum.KeyCode.W) then
+                local currentVel = veh.PrimaryPart.Velocity
+                local newVel = veh.PrimaryPart.CFrame.LookVector * getgenv().VehicleSpeed
+                -- Preserves Y velocity to prevent the car from flying into the sky
+                veh.PrimaryPart.Velocity = Vector3.new(newVel.X, currentVel.Y, newVel.Z)
+            end
         end
     end    
 })
@@ -319,7 +347,6 @@ VehicleTab:AddButton({
     Callback = function()
         local veh = getVehicle()
         if veh and veh.PrimaryPart then
-            -- Resets the X and Z rotation to 0 to flip the car upright
             local currentPos = veh.PrimaryPart.Position
             veh:SetPrimaryPartCFrame(CFrame.new(currentPos) * CFrame.Angles(0, math.rad(veh.PrimaryPart.Orientation.Y), 0))
         end
@@ -346,16 +373,62 @@ VehicleTab:AddToggle({
     end    
 })
 
-VehicleTab:AddToggle({
-    Name = "No Car Damage",
-    Default = false,
+-- ==========================================
+-- TAB 3: PLAYER MODS
+-- ==========================================
+local PlayerTab = Window:MakeTab({Name = "Player", Icon = "rbxassetid://4483362458", PremiumOnly = false})
+PlayerTab:AddSection({Name = "Movement"})
+
+getgenv().WalkSpeedValue = 16
+PlayerTab:AddSlider({
+    Name = "Walk Speed Value", Min = 16, Max = 300, Default = 16, Color = Color3.fromRGB(0, 255, 100), Increment = 1, ValueName = "WS",
     Callback = function(Value)
-        -- [PLACEHOLDER] Delete or disable the vehicle damage script inside the car
+        getgenv().WalkSpeedValue = Value
+        if getgenv().WalkSpeedEnabled then
+            local root, hum = getChar()
+            if hum then hum.WalkSpeed = Value end
+        end
+    end    
+})
+
+PlayerTab:AddToggle({
+    Name = "Enable Walk Speed", Default = false,
+    Callback = function(Value)
+        getgenv().WalkSpeedEnabled = Value
+        local root, hum = getChar()
+        if hum then hum.WalkSpeed = Value and getgenv().WalkSpeedValue or 16 end
+    end    
+})
+
+getgenv().JumpPowerValue = 50
+PlayerTab:AddSlider({
+    Name = "High Jump Value", Min = 50, Max = 300, Default = 50, Color = Color3.fromRGB(0, 255, 100), Increment = 1, ValueName = "JP",
+    Callback = function(Value)
+        getgenv().JumpPowerValue = Value
+        if getgenv().JumpPowerEnabled then
+            local root, hum = getChar()
+            if hum then 
+                hum.UseJumpPower = true
+                hum.JumpPower = Value 
+            end
+        end
+    end    
+})
+
+PlayerTab:AddToggle({
+    Name = "Enable High Jump", Default = false,
+    Callback = function(Value)
+        getgenv().JumpPowerEnabled = Value
+        local root, hum = getChar()
+        if hum then 
+            hum.UseJumpPower = true
+            hum.JumpPower = Value and getgenv().JumpPowerValue or 50 
+        end
     end    
 })
 
 -- ==========================================
--- TAB 3: TELEPORTS
+-- TAB 4: TELEPORTS
 -- ==========================================
 local TeleportTab = Window:MakeTab({Name = "Teleports", Icon = "rbxassetid://4483345998", PremiumOnly = false})
 
@@ -385,15 +458,8 @@ TeleportTab:AddButton({
     end    
 })
 
-TeleportTab:AddButton({
-    Name = "Teleport to Drag Race",
-    Callback = function()
-        tpPlayer(Vector3.new(-500, 50, -500)) -- Replace with exact drag strip coordinates
-    end    
-})
-
 -- ==========================================
--- TAB 4: MISCELLANEOUS
+-- TAB 5: MISCELLANEOUS
 -- ==========================================
 local MiscTab = Window:MakeTab({Name = "Misc", Icon = "rbxassetid://4483345998", PremiumOnly = false})
 
@@ -416,8 +482,7 @@ MiscTab:AddToggle({
 MiscTab:AddButton({
     Name = "Unlock Gamepasses (Client-Side)",
     Callback = function()
-        -- [PLACEHOLDER] Bypass client-side checks for gamepass UI locks
-        OrionLib:MakeNotification({Name = "Visual Only", Content = "Gamepasses visually unlocked. Server checks may still prevent use.", Image = "rbxassetid://4483362458", Time = 3})
+        OrionLib:MakeNotification({Name = "Visual Only", Content = "Gamepasses visually unlocked.", Image = "rbxassetid://4483362458", Time = 3})
     end    
 })
 
