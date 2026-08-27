@@ -11,19 +11,24 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local VirtualUser = game:GetService("VirtualUser")
+local Lighting = game:GetService("Lighting")
 
 local LocalPlayer = Players.LocalPlayer
+local Mouse = LocalPlayer:GetMouse()
 
 -- Global States
 getgenv().WalkSpeedEnabled = false
 getgenv().WalkSpeedValue = 16
 getgenv().JumpPowerEnabled = false
 getgenv().JumpPowerValue = 50
+getgenv().NoClip = false
+getgenv().InfJump = false
+getgenv().CtrlClickTP = false
 
 -- ==========================================
 -- 2. BACKGROUND HANDLERS
 -- ==========================================
--- Safely handle respawns without freezing the script
+-- Safely handle respawns
 LocalPlayer.CharacterAdded:Connect(function(char)
     task.spawn(function()
         local hum = char:WaitForChild("Humanoid", 3)
@@ -44,6 +49,39 @@ local function getChar()
     return nil, nil
 end
 
+-- Universal Infinite Jump
+UserInputService.JumpRequest:Connect(function()
+    if getgenv().InfJump then
+        local _, hum = getChar()
+        if hum then hum:ChangeState(Enum.HumanoidStateType.Jumping) end
+    end
+end)
+
+-- Universal NoClip
+RunService.Stepped:Connect(function()
+    if getgenv().NoClip then
+        local char = LocalPlayer.Character
+        if char then
+            for _, v in pairs(char:GetDescendants()) do
+                if v:IsA("BasePart") and v.CanCollide then
+                    v.CanCollide = false
+                end
+            end
+        end
+    end
+end)
+
+-- Universal Ctrl + Click Teleport
+Mouse.Button1Down:Connect(function()
+    if getgenv().CtrlClickTP and UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then
+        local root, _ = getChar()
+        if root and Mouse.Hit then
+            -- Teleports slightly above the mouse location so you don't get stuck in the floor
+            root.CFrame = CFrame.new(Mouse.Hit.X, Mouse.Hit.Y + 3, Mouse.Hit.Z)
+        end
+    end
+end)
+
 -- ==========================================
 -- 3. BUILD THE UI FIRST
 -- ==========================================
@@ -58,15 +96,13 @@ local Window = OrionLib:MakeWindow({
 })
 
 -- ==========================================
--- TAB 1: AUTO FARMING
+-- TAB 1: AUTO FARMING (Requires SimpleSpy Setup)
 -- ==========================================
 local FarmTab = Window:MakeTab({Name = "Farming", Icon = "rbxassetid://4483362458", PremiumOnly = false})
-
-FarmTab:AddSection({Name = "Leaf Automation"})
+FarmTab:AddSection({Name = "Leaf Automation (Needs Setup)"})
 
 FarmTab:AddToggle({
-    Name = "Auto Collect Leaves", 
-    Default = false,
+    Name = "Auto Collect Leaves", Default = false,
     Callback = function(Value)
         getgenv().AutoCollect = Value
         if Value then
@@ -74,19 +110,7 @@ FarmTab:AddToggle({
                 while getgenv().AutoCollect do
                     task.wait(0.1)
                     pcall(function()
-                        -- [PLACEHOLDER] Replace with the exact RemoteEvent from SimpleSpy
-                        -- Example: ReplicatedStorage.Remotes.CollectLeaf:FireServer()
-                        
-                        -- Backup Physical Touch Method (if game uses physics instead of remotes)
-                        for _, item in pairs(workspace:GetDescendants()) do
-                            if item.Name == "Leaf" and item:IsA("BasePart") then
-                                local root, _ = getChar()
-                                if root then
-                                    firetouchinterest(root, item, 0)
-                                    firetouchinterest(root, item, 1)
-                                end
-                            end
-                        end
+                        -- [PLACEHOLDER] Replace with exact RemoteEvent from SimpleSpy
                     end)
                 end
             end)
@@ -95,8 +119,7 @@ FarmTab:AddToggle({
 })
 
 FarmTab:AddToggle({
-    Name = "Auto Vent / Sell", 
-    Default = false,
+    Name = "Auto Vent / Sell", Default = false,
     Callback = function(Value)
         getgenv().AutoSell = Value
         if Value then
@@ -104,26 +127,7 @@ FarmTab:AddToggle({
                 while getgenv().AutoSell do
                     task.wait(2)
                     pcall(function()
-                        -- [PLACEHOLDER] Replace with the exact Sell/Vent RemoteEvent from SimpleSpy
-                        -- Example: ReplicatedStorage.Remotes.Sell:FireServer()
-                    end)
-                end
-            end)
-        end
-    end    
-})
-
-FarmTab:AddToggle({
-    Name = "Auto Complete Zone", 
-    Default = false,
-    Callback = function(Value)
-        getgenv().AutoComplete = Value
-        if Value then
-            task.spawn(function()
-                while getgenv().AutoComplete do
-                    task.wait(5)
-                    pcall(function()
-                        -- [PLACEHOLDER] Replace with the remote that triggers zone completion
+                        -- [PLACEHOLDER] Replace with exact Sell RemoteEvent from SimpleSpy
                     end)
                 end
             end)
@@ -132,55 +136,30 @@ FarmTab:AddToggle({
 })
 
 -- ==========================================
--- TAB 2: UPGRADES
--- ==========================================
-local UpgradeTab = Window:MakeTab({Name = "Upgrades", Icon = "rbxassetid://4483362458", PremiumOnly = false})
-
-UpgradeTab:AddToggle({
-    Name = "Auto Upgrade Tool", 
-    Default = false,
-    Callback = function(Value)
-        getgenv().AutoTool = Value
-        if Value then
-            task.spawn(function()
-                while getgenv().AutoTool do
-                    task.wait(1)
-                    pcall(function()
-                        -- [PLACEHOLDER] Use SimpleSpy to find the purchase tool remote
-                    end)
-                end
-            end)
-        end
-    end    
-})
-
-UpgradeTab:AddToggle({
-    Name = "Auto Upgrade Capacity", 
-    Default = false,
-    Callback = function(Value)
-        getgenv().AutoCapacity = Value
-        if Value then
-            task.spawn(function()
-                while getgenv().AutoCapacity do
-                    task.wait(1)
-                    pcall(function()
-                        -- [PLACEHOLDER] Use SimpleSpy to find the upgrade backpack remote
-                    end)
-                end
-            end)
-        end
-    end    
-})
-
--- ==========================================
--- TAB 3: PLAYER MODS
+-- TAB 2: UNIVERSAL PLAYER MODS
 -- ==========================================
 local PlayerTab = Window:MakeTab({Name = "Player", Icon = "rbxassetid://4483362458", PremiumOnly = false})
-PlayerTab:AddSection({Name = "Movement"})
+PlayerTab:AddSection({Name = "Movement Overrides"})
+
+PlayerTab:AddToggle({
+    Name = "NoClip (Walk Through Walls)", Default = false,
+    Callback = function(Value) getgenv().NoClip = Value end    
+})
+
+PlayerTab:AddToggle({
+    Name = "Infinite Jump", Default = false,
+    Callback = function(Value) getgenv().InfJump = Value end    
+})
+
+PlayerTab:AddToggle({
+    Name = "Ctrl + Click Teleport", Default = false,
+    Callback = function(Value) getgenv().CtrlClickTP = Value end    
+})
+
+PlayerTab:AddSection({Name = "Stat Modifiers"})
 
 PlayerTab:AddSlider({
-    Name = "Walk Speed Value", 
-    Min = 16, Max = 300, Default = 16, Color = Color3.fromRGB(0, 255, 100), Increment = 1, ValueName = "WS",
+    Name = "Walk Speed", Min = 16, Max = 300, Default = 16, Color = Color3.fromRGB(0, 255, 100), Increment = 1, ValueName = "WS",
     Callback = function(Value)
         getgenv().WalkSpeedValue = Value
         if getgenv().WalkSpeedEnabled then
@@ -189,10 +168,8 @@ PlayerTab:AddSlider({
         end
     end    
 })
-
 PlayerTab:AddToggle({
-    Name = "Enable Walk Speed", 
-    Default = false,
+    Name = "Enable Walk Speed", Default = false,
     Callback = function(Value)
         getgenv().WalkSpeedEnabled = Value
         local _, hum = getChar()
@@ -201,8 +178,7 @@ PlayerTab:AddToggle({
 })
 
 PlayerTab:AddSlider({
-    Name = "High Jump Value", 
-    Min = 50, Max = 300, Default = 50, Color = Color3.fromRGB(0, 255, 100), Increment = 1, ValueName = "JP",
+    Name = "Jump Power", Min = 50, Max = 300, Default = 50, Color = Color3.fromRGB(0, 255, 100), Increment = 1, ValueName = "JP",
     Callback = function(Value)
         getgenv().JumpPowerValue = Value
         if getgenv().JumpPowerEnabled then
@@ -214,10 +190,8 @@ PlayerTab:AddSlider({
         end
     end    
 })
-
 PlayerTab:AddToggle({
-    Name = "Enable High Jump", 
-    Default = false,
+    Name = "Enable Jump Power", Default = false,
     Callback = function(Value)
         getgenv().JumpPowerEnabled = Value
         local _, hum = getChar()
@@ -228,28 +202,54 @@ PlayerTab:AddToggle({
     end    
 })
 
--- ==========================================
--- TAB 4: TELEPORTS
--- ==========================================
-local TeleportTab = Window:MakeTab({Name = "Teleports", Icon = "rbxassetid://4483345998", PremiumOnly = false})
-
-local function tpPlayer(pos)
-    local root = select(1, getChar())
-    if root then root.CFrame = CFrame.new(pos) end
-end
-
-TeleportTab:AddButton({Name = "Teleport to Spawn", Callback = function() tpPlayer(Vector3.new(0, 10, 0)) end})
-TeleportTab:AddButton({Name = "Teleport to Best Vent", Callback = function() tpPlayer(Vector3.new(100, 10, 100)) end})
-TeleportTab:AddButton({Name = "Teleport to Next Zone", Callback = function() tpPlayer(Vector3.new(500, 10, 500)) end})
+PlayerTab:AddSlider({
+    Name = "Gravity Modifier", Min = 0, Max = 196, Default = 196, Color = Color3.fromRGB(0, 255, 100), Increment = 1, ValueName = "Grav",
+    Callback = function(Value)
+        workspace.Gravity = Value
+    end    
+})
 
 -- ==========================================
--- TAB 5: MISCELLANEOUS
+-- TAB 3: UNIVERSAL VISUALS
+-- ==========================================
+local VisualsTab = Window:MakeTab({Name = "Visuals", Icon = "rbxassetid://4483362458", PremiumOnly = false})
+
+VisualsTab:AddButton({
+    Name = "Enable Fullbright",
+    Callback = function()
+        Lighting.Brightness = 2
+        Lighting.ClockTime = 14
+        Lighting.FogEnd = 100000
+        Lighting.GlobalShadows = false
+        Lighting.OutdoorAmbient = Color3.fromRGB(128, 128, 128)
+    end    
+})
+
+VisualsTab:AddButton({
+    Name = "Boost FPS (Removes Textures)",
+    Callback = function()
+        for _, v in pairs(workspace:GetDescendants()) do
+            if v:IsA("BasePart") then
+                v.Material = Enum.Material.SmoothPlastic
+                v.CastShadow = false
+                v.Reflectance = 0
+            elseif v:IsA("Decal") or v:IsA("Texture") then
+                v.Transparency = 1
+            elseif v:IsA("ParticleEmitter") or v:IsA("Trail") then
+                v.Enabled = false
+            end
+        end
+        OrionLib:MakeNotification({Name = "FPS Boosted", Content = "All lag-causing textures and particles removed.", Image = "rbxassetid://4483362458", Time = 3})
+    end    
+})
+
+-- ==========================================
+-- TAB 4: MISCELLANEOUS
 -- ==========================================
 local MiscTab = Window:MakeTab({Name = "Misc", Icon = "rbxassetid://4483345998", PremiumOnly = false})
 
 MiscTab:AddToggle({
-    Name = "Anti-AFK", 
-    Default = false,
+    Name = "Anti-AFK", Default = false,
     Callback = function(Value)
         getgenv().AntiAFK = Value
         if Value then
@@ -260,13 +260,6 @@ MiscTab:AddToggle({
             end)
             OrionLib:MakeNotification({Name = "Anti-AFK", Content = "You will no longer be kicked.", Image = "rbxassetid://4483362458", Time = 3})
         end
-    end    
-})
-
-MiscTab:AddButton({
-    Name = "Unlock Gamepasses (Client-Side)",
-    Callback = function()
-        OrionLib:MakeNotification({Name = "Visual Only", Content = "Gamepasses visually unlocked.", Image = "rbxassetid://4483362458", Time = 3})
     end    
 })
 
