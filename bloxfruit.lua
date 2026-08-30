@@ -1,5 +1,5 @@
 -- HAMI HUB | Blox Fruits Script (Custom UI Edition)
--- Core logic untouched. UI rebuilt from scratch. Top bar stats & extra H removed.
+-- Core logic untouched. Custom UI with Minimize & Close buttons added.
 
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
@@ -220,10 +220,7 @@ MainFrame.Position = UDim2.new(0.5, -375, 0.5, -240)
 MainFrame.BackgroundColor3 = DarkBG
 MainFrame.BorderSizePixel = 0
 MainFrame.Parent = ScreenGui
-
-local Corner = Instance.new("UICorner")
-Corner.CornerRadius = UDim.new(0, 10)
-Corner.Parent = MainFrame
+Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 10)
 
 -- Sidebar
 local Sidebar = Instance.new("Frame")
@@ -233,7 +230,6 @@ Sidebar.BorderSizePixel = 0
 Sidebar.Parent = MainFrame
 Instance.new("UICorner", Sidebar).CornerRadius = UDim.new(0, 10)
 
--- Hide sharp corners on the right side of sidebar
 local SidebarCover = Instance.new("Frame")
 SidebarCover.Size = UDim2.new(0, 10, 1, 0)
 SidebarCover.Position = UDim2.new(1, -10, 0, 0)
@@ -262,10 +258,47 @@ local TabList = Instance.new("UIListLayout")
 TabList.Padding = UDim.new(0, 10)
 TabList.Parent = TabContainer
 
--- Content Area (Moved up slightly since top bar is gone)
+-- Window Controls (Minimize & Close)
+local WindowControls = Instance.new("Frame")
+WindowControls.Size = UDim2.new(0, 70, 0, 30)
+WindowControls.Position = UDim2.new(1, -80, 0, 15)
+WindowControls.BackgroundTransparency = 1
+WindowControls.Parent = MainFrame
+
+local MinimizeBtn = Instance.new("TextButton")
+MinimizeBtn.Size = UDim2.new(0, 30, 0, 30)
+MinimizeBtn.Position = UDim2.new(0, 0, 0, 0)
+MinimizeBtn.BackgroundColor3 = CardBG
+MinimizeBtn.Text = "-"
+MinimizeBtn.Font = Enum.Font.GothamBold
+MinimizeBtn.TextSize = 16
+MinimizeBtn.TextColor3 = TextColor
+MinimizeBtn.Parent = WindowControls
+Instance.new("UICorner", MinimizeBtn).CornerRadius = UDim.new(0, 6)
+
+local CloseBtn = Instance.new("TextButton")
+CloseBtn.Size = UDim2.new(0, 30, 0, 30)
+CloseBtn.Position = UDim2.new(0, 40, 0, 0)
+CloseBtn.BackgroundColor3 = Color3.fromRGB(200, 60, 60) -- Red color for close
+CloseBtn.Text = "X"
+CloseBtn.Font = Enum.Font.GothamBold
+CloseBtn.TextSize = 14
+CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+CloseBtn.Parent = WindowControls
+Instance.new("UICorner", CloseBtn).CornerRadius = UDim.new(0, 6)
+
+MinimizeBtn.MouseButton1Click:Connect(function()
+    MainFrame.Visible = false
+end)
+
+CloseBtn.MouseButton1Click:Connect(function()
+    ScreenGui:Destroy()
+end)
+
+-- Content Area 
 local ContentArea = Instance.new("Frame")
-ContentArea.Size = UDim2.new(1, -240, 1, -40)
-ContentArea.Position = UDim2.new(0, 230, 0, 20)
+ContentArea.Size = UDim2.new(1, -240, 1, -60)
+ContentArea.Position = UDim2.new(0, 230, 0, 50)
 ContentArea.BackgroundTransparency = 1
 ContentArea.Parent = MainFrame
 
