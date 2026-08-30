@@ -1,5 +1,5 @@
 -- HAMI HUB | Blox Fruits Script (Custom UI Edition)
--- BUG FIXES: Draggable UI, Resizable UI, Default Fast Attack OFF, Native Auto Attack Hook
+-- BUG FIXES: Restored original working Auto Attack logic. Fast Attack moved to Main Tab.
 
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
@@ -12,7 +12,7 @@ local CoreGui = game:GetService("CoreGui")
 _G.Settings = {
     -- Combat
     AutoAttack = false,
-    FastAttack = false, -- Default changed to OFF
+    FastAttack = false,
     AutoClick = false,
     AutoEquip = false,
     -- Movement
@@ -35,6 +35,15 @@ _G.Settings = {
 -- ==========================================
 -- 1. CORE LOGIC & COMBAT HOOKS
 -- ==========================================
+local function TriggerAttack()
+    if LocalPlayer.Character then
+        local tool = LocalPlayer.Character:FindFirstChildOfClass("Tool")
+        if tool then
+            tool:Activate()
+        end
+    end
+end
+
 local CombatFrameworkR = nil
 task.spawn(function()
     pcall(function()
@@ -52,6 +61,7 @@ task.spawn(function()
     end)
 end)
 
+-- Restored to the perfectly working version!
 task.spawn(function()
     while task.wait(0.1) do
         -- Auto Equip
@@ -62,18 +72,25 @@ task.spawn(function()
             end
         end
 
-        -- Native Auto Attack (No Mouse Blinking)
-        if (_G.Settings.AutoAttack or _G.Settings.AutoClick) and LocalPlayer.Character then
-            if CombatFrameworkR and CombatFrameworkR.activeController and CombatFrameworkR.activeController.equipped then
+        -- Safe Auto Click
+        if _G.Settings.AutoClick then
+            TriggerAttack()
+        end
+
+        -- Auto Attack Logic
+        if _G.Settings.AutoAttack and LocalPlayer.Character then
+            if _G.Settings.FastAttack and CombatFrameworkR and CombatFrameworkR.activeController then
                 local ac = CombatFrameworkR.activeController
-                pcall(function()
-                    if _G.Settings.FastAttack and _G.Settings.AutoAttack then
+                if ac and ac.equipped then
+                    pcall(function()
                         ac.timeToNextAttack = 0
                         ac.timeToNextBlock = 0
                         ac.increment = 3
-                    end
-                    ac:attack()
-                end)
+                        ac:attack()
+                    end)
+                end
+            else
+                TriggerAttack()
             end
         end
     end
@@ -257,7 +274,6 @@ end)
 UserInputService.InputChanged:Connect(function(input)
     if resizing and input.UserInputType == Enum.UserInputType.MouseMovement then
         local delta = input.Position - rsDragStart
-        -- Clamp size so it doesn't get too small or off-screen
         local newWidth = math.clamp(rsStartSize.X.Offset + delta.X, 450, 1200)
         local newHeight = math.clamp(rsStartSize.Y.Offset + delta.Y, 300, 900)
         MainFrame.Size = UDim2.new(0, newWidth, 0, newHeight)
@@ -537,7 +553,6 @@ end
 -- ==========================================
 local MainTab = CreateTab("Main", "", true)
 local PlayerTab = CreateTab("Player", "", false)
-local CombatTab = CreateTab("Combat", "", false)
 local VisualsTab = CreateTab("Visuals", "", false)
 local TeleportTab = CreateTab("Teleports", "", false)
 
@@ -550,6 +565,7 @@ end)
 
 -- Main
 CreateToggle(MainTab, "Auto Attack", false, function(v) _G.Settings.AutoAttack = v end)
+CreateToggle(MainTab, "Fast Attack Mode", false, function(v) _G.Settings.FastAttack = v end)
 CreateToggle(MainTab, "Auto Equip", false, function(v) _G.Settings.AutoEquip = v end)
 CreateToggle(MainTab, "Safe Auto Click", false, function(v) _G.Settings.AutoClick = v end)
 
@@ -565,9 +581,6 @@ CreateToggle(PlayerTab, "Anti Sit", false, function(v) _G.Settings.AntiSit = v e
 CreateToggle(PlayerTab, "Fly Mode", false, function(v) _G.Settings.Fly = v end)
 CreateSlider(PlayerTab, "Fly Speed", 16, 300, 50, function(v) _G.Settings.FlySpeed = v end)
 
--- Combat
-CreateToggle(CombatTab, "Fast Attack Mode", false, function(v) _G.Settings.FastAttack = v end)
-
 -- Visuals
 CreateToggle(VisualsTab, "Player ESP", false, function(v) _G.Settings.ESP = v end)
 CreateToggle(VisualsTab, "FPS Saver", false, function(v) 
@@ -581,7 +594,7 @@ CreateToggle(VisualsTab, "Remove Fog", false, function(v)
     if atmo then atmo.Density = v and 0 or 0.3 end
 end)
 
--- Teleports (Grid of Buttons for locations)
+-- Teleports
 for name, cf in pairs(FirstSeaIslands) do
     CreateButton(TeleportTab, name, function() SafeTeleport(cf) end)
 end
