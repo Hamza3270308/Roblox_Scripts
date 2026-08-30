@@ -1,6 +1,6 @@
 -- HAMI HUB | Blox Fruits Script
--- UI Populated, Teleports, Movement, Visuals
--- BUG FIXES: Mouse blinking fixed via Tool:Activate, Walk on Water elevator glitch fixed
+-- UI Populated, Teleports Added, Movement/Visuals Added
+-- FIXED: Auto Attack & Fast Attack using VirtualInputManager & Dynamic Upvalues
 
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
 
@@ -19,6 +19,7 @@ local LocalPlayer = Players.LocalPlayer
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
+local VirtualInputManager = game:GetService("VirtualInputManager")
 local Lighting = game:GetService("Lighting")
 
 _G.Settings = {
@@ -44,31 +45,22 @@ _G.Settings = {
     FPSSaver = false,
 }
 
--- Native Tool Attack (Zero mouse cursor interference)
-local function TriggerAttack()
-    if LocalPlayer.Character then
-        local tool = LocalPlayer.Character:FindFirstChildOfClass("Tool")
-        if tool then
-            tool:Activate()
-        end
-    end
-end
-
 -- ==========================================
--- COMBAT FRAMEWORK HOOKS
+-- COMBAT FRAMEWORK HOOKS (FIXED)
 -- ==========================================
 local CombatFrameworkR = nil
 
 task.spawn(function()
     pcall(function()
-        local PlayerScripts = LocalPlayer:WaitForChild("PlayerScripts")
-        local CombatFramework = require(PlayerScripts:WaitForChild("CombatFramework"))
-        for _, v in pairs(getupvalues(CombatFramework) or debug.getupvalues(CombatFramework)) do
+        local CombatFramework = require(LocalPlayer.PlayerScripts:WaitForChild("CombatFramework"))
+        -- Dynamically search for activeController to prevent update patches
+        for i, v in pairs(getupvalues(CombatFramework) or debug.getupvalues(CombatFramework)) do
             if type(v) == "table" and v.activeController ~= nil then
                 CombatFrameworkR = v
                 break
             end
         end
+        -- Fallback if not found instantly
         if not CombatFrameworkR then
             CombatFrameworkR = (getupvalues(CombatFramework) or debug.getupvalues(CombatFramework))[2]
         end
@@ -78,7 +70,7 @@ end)
 -- Auto Attack / Auto Click / Auto Equip Loops
 task.spawn(function()
     while task.wait(0.1) do
-        -- Auto Equip
+        -- Auto Equip First Tool
         if _G.Settings.AutoEquip and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
             local tool = LocalPlayer.Backpack:FindFirstChildOfClass("Tool")
             if tool then
@@ -86,14 +78,18 @@ task.spawn(function()
             end
         end
 
-        -- Safe Auto Click
-        if _G.Settings.AutoClick then
-            TriggerAttack()
+        -- Safe Auto Click (Engine-Level Simulation)
+        if _G.Settings.AutoClick or (_G.Settings.AutoAttack and not _G.Settings.FastAttack) then
+            pcall(function()
+                VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 0)
+                task.wait(0.05)
+                VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 0)
+            end)
         end
 
-        -- Fast Attack Mode
-        if _G.Settings.AutoAttack and LocalPlayer.Character then
-            if _G.Settings.FastAttack and CombatFrameworkR and CombatFrameworkR.activeController then
+        -- Fast Attack (Client Cooldown Bypass + Redundant VIM Click)
+        if _G.Settings.AutoAttack and _G.Settings.FastAttack and LocalPlayer.Character then
+            if CombatFrameworkR and CombatFrameworkR.activeController then
                 local ac = CombatFrameworkR.activeController
                 if ac and ac.equipped then
                     pcall(function()
@@ -101,10 +97,13 @@ task.spawn(function()
                         ac.timeToNextBlock = 0
                         ac.increment = 3
                         ac:attack()
+                        
+                        -- Redundancy check to ensure hit registers
+                        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 0)
+                        task.wait(0.01)
+                        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 0)
                     end)
                 end
-            else
-                TriggerAttack()
             end
         end
     end
@@ -124,40 +123,35 @@ local FirstSeaIslands = {
     ["Marine Fortress"] = CFrame.new(-4800, 25, 4300)
 }
 
-local currentTween = nil
 local function SafeTeleport(targetCFrame)
     local char = LocalPlayer.Character
     if char and char:FindFirstChild("HumanoidRootPart") then
         local HRP = char.HumanoidRootPart
         local distance = (HRP.Position - targetCFrame.Position).Magnitude
         local tweenTime = distance / 300 
-        
-        if currentTween then currentTween:Cancel() end
-
         local tweenInfo = TweenInfo.new(tweenTime, Enum.EasingStyle.Linear)
-        currentTween = TweenService:Create(HRP, tweenInfo, {CFrame = targetCFrame})
+        local tween = TweenService:Create(HRP, tweenInfo, {CFrame = targetCFrame})
         
-        local bodyVel = Instance.new("BodyVelocity")
-        bodyVel.Velocity = Vector3.new(0, 0, 0)
-        bodyVel.MaxForce = Vector3.new(9e9, 9e9, 9e9)
-        bodyVel.Parent = HRP
+        local BodyVelocity = Instance.new("BodyVelocity")
+        BodyVelocity.Velocity = Vector3.new(0, 0, 0)
+        BodyVelocity.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+        BodyVelocity.Parent = HRP
         
-        currentTween:Play()
-        currentTween.Completed:Connect(function()
-            bodyVel:Destroy()
-            currentTween = nil
+        tween:Play()
+        tween.Completed:Connect(function()
+            BodyVelocity:Destroy()
         end)
     end
 end
 
 -- ==========================================
--- BACKGROUND LOOPS (Movement & Physics)
+-- BACKGROUND LOOPS (Mods, Movement, Visuals)
 -- ==========================================
 local WaterPlatform = Instance.new("Part")
-WaterPlatform.Size = Vector3.new(30, 1, 30)
+WaterPlatform.Size = Vector3.new(10, 1, 10)
 WaterPlatform.Transparency = 1
 WaterPlatform.Anchored = true
-WaterPlatform.CanCollide = false
+WaterPlatform.CanCollide = true
 WaterPlatform.Parent = workspace
 
 local bodyVelocity = nil
@@ -170,18 +164,18 @@ RunService.RenderStepped:Connect(function()
         local HRP = char.HumanoidRootPart
         local Humanoid = char.Humanoid
         
+        -- Speed & Jump
         if _G.Settings.SpeedToggle then Humanoid.WalkSpeed = _G.Settings.WalkSpeed end
         if _G.Settings.JumpToggle then Humanoid.JumpPower = _G.Settings.JumpPower end
+        
+        -- Anti Sit
         if _G.Settings.AntiSit and Humanoid.Sit then Humanoid.Sit = false end
 
-        -- Fixed Walk on Water (Pinned to Sea Level)
+        -- Walk on Water
         if _G.Settings.WalkOnWater then
-            WaterPlatform.CanCollide = true
-            -- Anchored at fixed Y = 0 (sea surface) to prevent elevator glitches
-            WaterPlatform.CFrame = CFrame.new(HRP.Position.X, 0, HRP.Position.Z)
+            WaterPlatform.CFrame = HRP.CFrame * CFrame.new(0, -3.5, 0)
         else
-            WaterPlatform.CanCollide = false
-            WaterPlatform.CFrame = CFrame.new(0, -500, 0)
+            WaterPlatform.CFrame = CFrame.new(0, 50000, 0)
         end
 
         -- Fly Logic
@@ -211,9 +205,16 @@ RunService.RenderStepped:Connect(function()
             if bodyGyro then bodyGyro:Destroy(); bodyGyro = nil end
         end
     end
+
+    -- Remove Fog
+    if _G.Settings.RemoveFog then
+        Lighting.FogEnd = 100000
+        if Lighting:FindFirstChildOfClass("Atmosphere") then
+            Lighting:FindFirstChildOfClass("Atmosphere").Density = 0
+        end
+    end
 end)
 
--- Noclip
 RunService.Stepped:Connect(function()
     if _G.Settings.Noclip and LocalPlayer.Character then
         for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
@@ -224,7 +225,6 @@ RunService.Stepped:Connect(function()
     end
 end)
 
--- Inf Jump
 UserInputService.JumpRequest:Connect(function()
     if _G.Settings.InfJump and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
         LocalPlayer.Character.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
@@ -245,7 +245,7 @@ local Tabs = {
 -- [ COMBAT TAB ]
 Tabs.Combat:AddToggle("AutoAttackToggle", { Title = "Auto Attack", Default = false, Callback = function(Value) _G.Settings.AutoAttack = Value end })
 Tabs.Combat:AddToggle("FastAttackToggle", { Title = "Fast Attack Mode", Default = true, Callback = function(Value) _G.Settings.FastAttack = Value end })
-Tabs.Combat:AddToggle("AutoClickToggle", { Title = "Auto Click (Safe)", Default = false, Callback = function(Value) _G.Settings.AutoClick = Value end })
+Tabs.Combat:AddToggle("AutoClickToggle", { Title = "Auto Click (Normal)", Default = false, Callback = function(Value) _G.Settings.AutoClick = Value end })
 Tabs.Combat:AddToggle("AutoEquipToggle", { Title = "Auto Equip Weapon", Default = false, Callback = function(Value) _G.Settings.AutoEquip = Value end })
 
 -- [ TELEPORT TAB ]
@@ -275,38 +275,26 @@ Tabs.Player:AddToggle("NoclipToggle", { Title = "Noclip", Default = false, Callb
 Tabs.Player:AddToggle("WaterToggle", { Title = "Walk on Water", Default = false, Callback = function(Value) _G.Settings.WalkOnWater = Value end })
 Tabs.Player:AddToggle("AntiSitToggle", { Title = "Anti Sit", Default = false, Callback = function(Value) _G.Settings.AntiSit = Value end })
 
-Tabs.Player:AddToggle("FlyToggle", { Title = "Fly", Description = "Use WASD + Space/Shift", Default = false, Callback = function(Value) _G.Settings.Fly = Value end })
+Tabs.Player:AddToggle("FlyToggle", { Title = "Fly", Description = "Use WASD + Space/Shift to fly", Default = false, Callback = function(Value) _G.Settings.Fly = Value end })
 Tabs.Player:AddSlider("FlySpeed", { Title = "Fly Speed", Default = 50, Min = 16, Max = 300, Rounding = 0, Callback = function(Value) _G.Settings.FlySpeed = Value end })
 
 -- [ VISUALS TAB ]
 Tabs.Visuals:AddToggle("ESPToggle", { Title = "Player ESP", Default = false, Callback = function(Value) _G.Settings.ESP = Value end })
-
-Tabs.Visuals:AddToggle("RemoveFogToggle", { 
-    Title = "Remove Fog", 
-    Default = false, 
-    Callback = function(Value) 
-        _G.Settings.RemoveFog = Value 
-        if Value then
-            Lighting.FogEnd = 100000
-            local atmosphere = Lighting:FindFirstChildOfClass("Atmosphere")
-            if atmosphere then atmosphere.Density = 0 end
-        else
-            Lighting.FogEnd = 1000
-            local atmosphere = Lighting:FindFirstChildOfClass("Atmosphere")
-            if atmosphere then atmosphere.Density = 0.3 end
-        end
-    end 
-})
-
+Tabs.Visuals:AddToggle("RemoveFogToggle", { Title = "Remove Fog", Default = false, Callback = function(Value) _G.Settings.RemoveFog = Value end })
 Tabs.Visuals:AddToggle("FPSSaverToggle", {
     Title = "FPS Saver",
-    Description = "Optimizes engine settings without freezing UI",
+    Description = "Removes textures & materials to boost FPS",
     Default = false,
     Callback = function(Value)
         _G.Settings.FPSSaver = Value
         if Value then
             settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
             Lighting.GlobalShadows = false
+            for _, v in pairs(workspace:GetDescendants()) do
+                if v:IsA("BasePart") and not v:IsA("MeshPart") then
+                    v.Material = Enum.Material.SmoothPlastic
+                end
+            end
         else
             settings().Rendering.QualityLevel = Enum.QualityLevel.Automatic
             Lighting.GlobalShadows = true
@@ -316,4 +304,4 @@ Tabs.Visuals:AddToggle("FPSSaverToggle", {
 
 -- Initialize UI
 Window:SelectTab(1)
-Fluent:Notify({ Title = "HAMI HUB Fixed", Content = "Mouse focus and water walking physics repaired.", Duration = 4 })
+Fluent:Notify({ Title = "HAMI HUB V2", Content = "Combat Hooks Fixed & Ready.", Duration = 4 })
