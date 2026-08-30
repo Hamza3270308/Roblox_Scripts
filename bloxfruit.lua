@@ -1,5 +1,5 @@
 -- HAMI HUB | Blox Fruits Script (Custom UI Edition)
--- BUG FIXES: Restored original working Auto Attack logic. Fast Attack moved to Main Tab.
+-- BUG FIX: CombatFramework now forcibly handles all attacks. Auto Attack restored.
 
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
@@ -35,7 +35,7 @@ _G.Settings = {
 -- ==========================================
 -- 1. CORE LOGIC & COMBAT HOOKS
 -- ==========================================
-local function TriggerAttack()
+local function TriggerAttackFallback()
     if LocalPlayer.Character then
         local tool = LocalPlayer.Character:FindFirstChildOfClass("Tool")
         if tool then
@@ -61,7 +61,6 @@ task.spawn(function()
     end)
 end)
 
--- Restored to the perfectly working version!
 task.spawn(function()
     while task.wait(0.1) do
         -- Auto Equip
@@ -74,23 +73,30 @@ task.spawn(function()
 
         -- Safe Auto Click
         if _G.Settings.AutoClick then
-            TriggerAttack()
+            if CombatFrameworkR and CombatFrameworkR.activeController then
+                pcall(function() CombatFrameworkR.activeController:attack() end)
+            else
+                TriggerAttackFallback()
+            end
         end
 
-        -- Auto Attack Logic
+        -- Auto Attack (Forced Framework Priority)
         if _G.Settings.AutoAttack and LocalPlayer.Character then
-            if _G.Settings.FastAttack and CombatFrameworkR and CombatFrameworkR.activeController then
+            if CombatFrameworkR and CombatFrameworkR.activeController then
                 local ac = CombatFrameworkR.activeController
                 if ac and ac.equipped then
                     pcall(function()
-                        ac.timeToNextAttack = 0
-                        ac.timeToNextBlock = 0
-                        ac.increment = 3
+                        if _G.Settings.FastAttack then
+                            ac.timeToNextAttack = 0
+                            ac.timeToNextBlock = 0
+                            ac.increment = 3
+                        end
                         ac:attack()
                     end)
                 end
             else
-                TriggerAttack()
+                -- Extreme fallback if framework fails entirely
+                TriggerAttackFallback()
             end
         end
     end
