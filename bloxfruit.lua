@@ -1,12 +1,12 @@
 -- HAMI HUB | Blox Fruits Script
 -- UI Populated, Teleports, Movement, Visuals
--- BUG FIXES: Mouse blinking fixed via Tool:Activate, Walk on Water elevator glitch fixed
+-- BUG FIXES: Mouse blinking fixed, Walk on Water fixed
+-- NEW: Green UI Borders injected
 
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
 
 local Window = Fluent:CreateWindow({
     Title = "HAMI HUB | Blox Fruits",
-    SubTitle = "by Hamii0327",
     TabWidth = 160,
     Size = UDim2.fromOffset(580, 460),
     Acrylic = true,
@@ -177,7 +177,6 @@ RunService.RenderStepped:Connect(function()
         -- Fixed Walk on Water (Pinned to Sea Level)
         if _G.Settings.WalkOnWater then
             WaterPlatform.CanCollide = true
-            -- Anchored at fixed Y = 0 (sea surface) to prevent elevator glitches
             WaterPlatform.CFrame = CFrame.new(HRP.Position.X, 0, HRP.Position.Z)
         else
             WaterPlatform.CanCollide = false
@@ -316,4 +315,28 @@ Tabs.Visuals:AddToggle("FPSSaverToggle", {
 
 -- Initialize UI
 Window:SelectTab(1)
-Fluent:Notify({ Title = "HAMI HUB Fixed", Content = "Mouse focus and water walking physics repaired.", Duration = 4 })
+Fluent:Notify({ Title = "HAMI HUB Loaded", Content = "Injected custom styling successfully.", Duration = 4 })
+
+-- Inject Green Borders (UIStroke) into Options
+task.spawn(function()
+    -- Wait a moment to ensure UI elements are fully loaded by Fluent
+    task.wait(1) 
+    for _, instance in pairs(game.CoreGui:GetDescendants()) do
+        -- Target the frames/buttons that make up the Fluent UI options
+        if instance:IsA("Frame") or instance:IsA("TextButton") then
+            -- Avoid adding borders to everything (like main backgrounds or tiny text labels)
+            if instance.Name == "Frame" or instance.Name == "Background" or instance:IsA("TextButton") then
+                local stroke = instance:FindFirstChildOfClass("UIStroke")
+                if not stroke then
+                    stroke = Instance.new("UIStroke")
+                    stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+                    stroke.Parent = instance
+                end
+                -- Set the stroke to Green
+                stroke.Color = Color3.fromRGB(0, 255, 0)
+                stroke.Thickness = 1
+                stroke.Transparency = 0.5 -- Adjust for a nice glowing/subtle effect
+            end
+        end
+    end
+end)
