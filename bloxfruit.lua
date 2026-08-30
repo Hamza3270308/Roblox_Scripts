@@ -1,5 +1,5 @@
 -- HAMI HUB | Blox Fruits Script (Custom UI Edition)
--- Core logic untouched. Custom UI with Minimize & Close buttons added.
+-- BUG FIXES: Draggable UI, Resizable UI, Default Fast Attack OFF, Native Auto Attack Hook
 
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
@@ -12,7 +12,7 @@ local CoreGui = game:GetService("CoreGui")
 _G.Settings = {
     -- Combat
     AutoAttack = false,
-    FastAttack = true,
+    FastAttack = false, -- Default changed to OFF
     AutoClick = false,
     AutoEquip = false,
     -- Movement
@@ -35,15 +35,6 @@ _G.Settings = {
 -- ==========================================
 -- 1. CORE LOGIC & COMBAT HOOKS
 -- ==========================================
-local function TriggerAttack()
-    if LocalPlayer.Character then
-        local tool = LocalPlayer.Character:FindFirstChildOfClass("Tool")
-        if tool then
-            tool:Activate()
-        end
-    end
-end
-
 local CombatFrameworkR = nil
 task.spawn(function()
     pcall(function()
@@ -63,6 +54,7 @@ end)
 
 task.spawn(function()
     while task.wait(0.1) do
+        -- Auto Equip
         if _G.Settings.AutoEquip and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
             local tool = LocalPlayer.Backpack:FindFirstChildOfClass("Tool")
             if tool then
@@ -70,23 +62,18 @@ task.spawn(function()
             end
         end
 
-        if _G.Settings.AutoClick then
-            TriggerAttack()
-        end
-
-        if _G.Settings.AutoAttack and LocalPlayer.Character then
-            if _G.Settings.FastAttack and CombatFrameworkR and CombatFrameworkR.activeController then
+        -- Native Auto Attack (No Mouse Blinking)
+        if (_G.Settings.AutoAttack or _G.Settings.AutoClick) and LocalPlayer.Character then
+            if CombatFrameworkR and CombatFrameworkR.activeController and CombatFrameworkR.activeController.equipped then
                 local ac = CombatFrameworkR.activeController
-                if ac and ac.equipped then
-                    pcall(function()
+                pcall(function()
+                    if _G.Settings.FastAttack and _G.Settings.AutoAttack then
                         ac.timeToNextAttack = 0
                         ac.timeToNextBlock = 0
                         ac.increment = 3
-                        ac:attack()
-                    end)
-                end
-            else
-                TriggerAttack()
+                    end
+                    ac:attack()
+                end)
             end
         end
     end
@@ -198,15 +185,14 @@ UserInputService.JumpRequest:Connect(function()
 end)
 
 -- ==========================================
--- 3. CUSTOM UI CREATION ENGINE (MATCHING IMAGE)
+-- 3. CUSTOM UI CREATION ENGINE
 -- ==========================================
-local AccentColor = Color3.fromRGB(0, 255, 127) -- Bright Green
+local AccentColor = Color3.fromRGB(0, 255, 127) 
 local DarkBG = Color3.fromRGB(15, 15, 15)
 local CardBG = Color3.fromRGB(25, 25, 25)
 local TextColor = Color3.fromRGB(240, 240, 240)
 local SubTextColor = Color3.fromRGB(150, 150, 150)
 
--- Clean old UI if exists
 if CoreGui:FindFirstChild("HamiHubCustom") then CoreGui.HamiHubCustom:Destroy() end
 
 local ScreenGui = Instance.new("ScreenGui")
@@ -219,8 +205,64 @@ MainFrame.Size = UDim2.new(0, 750, 0, 480)
 MainFrame.Position = UDim2.new(0.5, -375, 0.5, -240)
 MainFrame.BackgroundColor3 = DarkBG
 MainFrame.BorderSizePixel = 0
+MainFrame.Active = true
 MainFrame.Parent = ScreenGui
 Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 10)
+
+-- *** DRAGGABLE UI LOGIC ***
+local dragging, dragInput, dragStart, startPos
+MainFrame.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = MainFrame.Position
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then dragging = false end
+        end)
+    end
+end)
+MainFrame.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+        dragInput = input
+    end
+end)
+UserInputService.InputChanged:Connect(function(input)
+    if input == dragInput and dragging then
+        local delta = input.Position - dragStart
+        MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end)
+
+-- *** RESIZABLE UI LOGIC ***
+local ResizeHandle = Instance.new("TextButton")
+ResizeHandle.Size = UDim2.new(0, 15, 0, 15)
+ResizeHandle.Position = UDim2.new(1, -15, 1, -15)
+ResizeHandle.BackgroundTransparency = 1
+ResizeHandle.Text = "↘"
+ResizeHandle.TextColor3 = SubTextColor
+ResizeHandle.TextSize = 14
+ResizeHandle.Parent = MainFrame
+
+local resizing, rsDragStart, rsStartSize
+ResizeHandle.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        resizing = true
+        rsDragStart = input.Position
+        rsStartSize = MainFrame.Size
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then resizing = false end
+        end)
+    end
+end)
+UserInputService.InputChanged:Connect(function(input)
+    if resizing and input.UserInputType == Enum.UserInputType.MouseMovement then
+        local delta = input.Position - rsDragStart
+        -- Clamp size so it doesn't get too small or off-screen
+        local newWidth = math.clamp(rsStartSize.X.Offset + delta.X, 450, 1200)
+        local newHeight = math.clamp(rsStartSize.Y.Offset + delta.Y, 300, 900)
+        MainFrame.Size = UDim2.new(0, newWidth, 0, newHeight)
+    end
+end)
 
 -- Sidebar
 local Sidebar = Instance.new("Frame")
@@ -279,7 +321,7 @@ Instance.new("UICorner", MinimizeBtn).CornerRadius = UDim.new(0, 6)
 local CloseBtn = Instance.new("TextButton")
 CloseBtn.Size = UDim2.new(0, 30, 0, 30)
 CloseBtn.Position = UDim2.new(0, 40, 0, 0)
-CloseBtn.BackgroundColor3 = Color3.fromRGB(200, 60, 60) -- Red color for close
+CloseBtn.BackgroundColor3 = Color3.fromRGB(200, 60, 60)
 CloseBtn.Text = "X"
 CloseBtn.Font = Enum.Font.GothamBold
 CloseBtn.TextSize = 14
@@ -524,7 +566,7 @@ CreateToggle(PlayerTab, "Fly Mode", false, function(v) _G.Settings.Fly = v end)
 CreateSlider(PlayerTab, "Fly Speed", 16, 300, 50, function(v) _G.Settings.FlySpeed = v end)
 
 -- Combat
-CreateToggle(CombatTab, "Fast Attack Mode", true, function(v) _G.Settings.FastAttack = v end)
+CreateToggle(CombatTab, "Fast Attack Mode", false, function(v) _G.Settings.FastAttack = v end)
 
 -- Visuals
 CreateToggle(VisualsTab, "Player ESP", false, function(v) _G.Settings.ESP = v end)
