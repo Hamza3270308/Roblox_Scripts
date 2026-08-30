@@ -1,26 +1,34 @@
 -- HAMI HUB | Blox Fruits Script
--- Uses Orion Library for a sleek, modern UI with customizable accents.
+-- Migrated to Rayfield Library (100% supported by Delta Executor)
+-- The Orion library was officially deleted by its creator, which is why it was failing to load!
 
-local OrionLib = loadstring(game:HttpGet(('https://raw.githubusercontent.com/shlexware/Orion/main/source')))()
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
--- We set the theme color to match the bright green from your image
-local Window = OrionLib:MakeWindow({
-    Name = "HAMI HUB", 
-    HidePremium = false, 
-    SaveConfig = true, 
-    ConfigFolder = "HamiHub",
-    IntroEnabled = true,
-    IntroText = "HAMI HUB",
+local Window = Rayfield:CreateWindow({
+   Name = "HAMI HUB | Blox Fruits",
+   LoadingTitle = "Loading HAMI HUB...",
+   LoadingSubtitle = "by Hamii0327",
+   ConfigurationSaving = {
+      Enabled = true,
+      FolderName = "HamiHub",
+      FileName = "HamiHubConfig"
+   },
+   Discord = {
+      Enabled = false,
+      Invite = "", 
+      RememberJoins = true 
+   },
+   KeySystem = false, 
 })
 
 -- ==========================================
 -- TABS (Matching the layout in your image)
 -- ==========================================
-local MainTab = Window:MakeTab({Name = "Main", Icon = "rbxassetid://4483345998", PremiumOnly = false})
-local PlayerTab = Window:MakeTab({Name = "Player", Icon = "rbxassetid://4483345998", PremiumOnly = false})
-local VisualsTab = Window:MakeTab({Name = "Visuals", Icon = "rbxassetid://4483345998", PremiumOnly = false})
-local CombatTab = Window:MakeTab({Name = "Combat", Icon = "rbxassetid://4483345998", PremiumOnly = false})
-local SettingsTab = Window:MakeTab({Name = "Settings", Icon = "rbxassetid://4483345998", PremiumOnly = false})
+local MainTab = Window:CreateTab("Main", "home")
+local PlayerTab = Window:CreateTab("Player", "user")
+local VisualsTab = Window:CreateTab("Visuals", "eye")
+local CombatTab = Window:CreateTab("Combat", "swords")
+local SettingsTab = Window:CreateTab("Settings", "settings")
 
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
@@ -35,51 +43,57 @@ _G.States = {
 -- ==========================================
 -- 1. MAIN MENU (Proper Blox Fruits Features)
 -- ==========================================
-local FarmSection = MainTab:AddSection({Name = "Auto Farming & Quests"})
+local FarmSection = MainTab:CreateSection("Auto Farming & Quests")
 
-MainTab:AddToggle({
+MainTab:CreateToggle({
     Name = "Auto Farm Level (Completes Quests)",
-    Default = false,
+    CurrentValue = false,
+    Flag = "AutoLevel",
     Callback = function(Value)
         -- Logic to check current level, grab appropriate quest, and kill mobs
     end    
 })
 
-MainTab:AddToggle({
+MainTab:CreateToggle({
     Name = "Auto Farm Nearest Mob",
-    Default = false,
+    CurrentValue = false,
+    Flag = "AutoNearest",
     Callback = function(Value)
         -- Logic to attack whatever is closest
     end    
 })
 
-MainTab:AddToggle({
+MainTab:CreateToggle({
     Name = "Auto Boss Farm",
-    Default = false,
+    CurrentValue = false,
+    Flag = "AutoBoss",
     Callback = function(Value)
         -- Logic to server-hop and farm specific bosses
     end    
 })
 
-local SeaEventSection = MainTab:AddSection({Name = "Sea Events & Third Sea"})
+local SeaEventSection = MainTab:CreateSection("Sea Events & Third Sea")
 
-MainTab:AddToggle({
+MainTab:CreateToggle({
     Name = "Auto Leviathan Hunt",
-    Default = false,
+    CurrentValue = false,
+    Flag = "AutoLeviathan",
     Callback = function(Value)
     end    
 })
 
-MainTab:AddToggle({
+MainTab:CreateToggle({
     Name = "Auto Terrorshark / Sea Beast",
-    Default = false,
+    CurrentValue = false,
+    Flag = "AutoTerrorshark",
     Callback = function(Value)
     end    
 })
 
-MainTab:AddToggle({
+MainTab:CreateToggle({
     Name = "Auto Mirage Island",
-    Default = false,
+    CurrentValue = false,
+    Flag = "AutoMirage",
     Callback = function(Value)
     end    
 })
@@ -87,16 +101,15 @@ MainTab:AddToggle({
 -- ==========================================
 -- 2. PLAYER MODS (Matching your Image)
 -- ==========================================
-local MovementSection = PlayerTab:AddSection({Name = "Movement Mods"})
+local MovementSection = PlayerTab:CreateSection("Movement Mods")
 
-PlayerTab:AddSlider({
+PlayerTab:CreateSlider({
     Name = "Player Speed",
-    Min = 16,
-    Max = 500,
-    Default = 16,
-    Color = Color3.fromRGB(24, 208, 112), -- Matches the neon green in the image
+    Range = {16, 500},
     Increment = 1,
-    ValueName = "Speed",
+    Suffix = "%",
+    CurrentValue = 16,
+    Flag = "WalkSpeedSlider",
     Callback = function(Value)
         if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
             LocalPlayer.Character.Humanoid.WalkSpeed = Value
@@ -104,14 +117,13 @@ PlayerTab:AddSlider({
     end    
 })
 
-PlayerTab:AddSlider({
+PlayerTab:CreateSlider({
     Name = "Jump Height",
-    Min = 50,
-    Max = 500,
-    Default = 50,
-    Color = Color3.fromRGB(24, 208, 112), -- Matches the neon green in the image
+    Range = {50, 500},
     Increment = 1,
-    ValueName = "Height",
+    Suffix = "%",
+    CurrentValue = 50,
+    Flag = "JumpHeightSlider",
     Callback = function(Value)
         if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
             LocalPlayer.Character.Humanoid.JumpPower = Value
@@ -119,9 +131,10 @@ PlayerTab:AddSlider({
     end    
 })
 
-PlayerTab:AddToggle({
+PlayerTab:CreateToggle({
     Name = "Infinite Jump",
-    Default = false,
+    CurrentValue = false,
+    Flag = "InfJumpToggle",
     Callback = function(Value)
         _G.States.InfJump = Value
     end    
@@ -133,9 +146,10 @@ UserInputService.JumpRequest:Connect(function()
     end
 end)
 
-PlayerTab:AddToggle({
+PlayerTab:CreateToggle({
     Name = "No Clip",
-    Default = false,
+    CurrentValue = false,
+    Flag = "NoclipToggle",
     Callback = function(Value)
         _G.States.Noclip = Value
     end    
@@ -154,27 +168,30 @@ end)
 -- ==========================================
 -- 3. VISUALS MODS (Matching your Image)
 -- ==========================================
-local VisualsSection = VisualsTab:AddSection({Name = "VISUAL MODS"})
+local VisualsSection = VisualsTab:CreateSection("VISUAL MODS")
 
-VisualsTab:AddToggle({
+VisualsTab:CreateToggle({
     Name = "ESP Master Switch",
-    Default = false,
+    CurrentValue = false,
+    Flag = "MasterESP",
     Callback = function(Value)
         -- Toggles all ESP loops
     end    
 })
 
-VisualsTab:AddToggle({
+VisualsTab:CreateToggle({
     Name = "Players ESP",
-    Default = false,
+    CurrentValue = false,
+    Flag = "PlayerESP",
     Callback = function(Value)
         -- Logic to render boxes/names over players
     end    
 })
 
-VisualsTab:AddToggle({
+VisualsTab:CreateToggle({
     Name = "Items (Fruits/Chests) ESP",
-    Default = false,
+    CurrentValue = false,
+    Flag = "ItemESP",
     Callback = function(Value)
         -- Logic to render names over spawned fruits and chests
     end    
@@ -183,34 +200,39 @@ VisualsTab:AddToggle({
 -- ==========================================
 -- 4. COMBAT & STATS (Proper Blox Fruits Features)
 -- ==========================================
-local CombatSection = CombatTab:AddSection({Name = "Mastery & Combat"})
+local CombatSection = CombatTab:CreateSection("Mastery & Combat")
 
-CombatTab:AddToggle({
+CombatTab:CreateToggle({
     Name = "Fruit Sniper / Bring Fruit",
-    Default = false,
+    CurrentValue = false,
+    Flag = "FruitSniper",
     Callback = function(Value)
         -- Teleports spawned fruits directly to player
     end    
 })
 
-CombatTab:AddToggle({
+CombatTab:CreateToggle({
     Name = "Auto Haki (Aura)",
-    Default = false,
+    CurrentValue = false,
+    Flag = "AutoHaki",
     Callback = function(Value)
         -- Fires remote to enable Haki automatically
     end    
 })
 
-CombatTab:AddToggle({
+CombatTab:CreateToggle({
     Name = "Aimbot (Skills)",
-    Default = false,
+    CurrentValue = false,
+    Flag = "Aimbot",
     Callback = function(Value)
         -- Locks camera or skill direction to nearest player/mob
     end    
 })
 
--- ==========================================
--- INITIALIZE
--- ==========================================
-OrionLib:Init()
+Rayfield:Notify({
+   Title = "Hami Hub Successfully Loaded!",
+   Content = "Enjoy your Blox Fruits features.",
+   Duration = 5,
+   Image = "check",
+})
 
