@@ -1,6 +1,6 @@
 -- HAMI HUB | Blox Fruits Script
 -- UI Populated, Teleports, Movement, Visuals
--- BUG FIXES: Input locking fixed, thread-blocking loops removed, FPS optimized
+-- BUG FIXES: Mouse blinking fixed via Tool:Activate, Walk on Water elevator glitch fixed
 
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
 
@@ -19,7 +19,6 @@ local LocalPlayer = Players.LocalPlayer
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
-local VirtualInputManager = game:GetService("VirtualInputManager")
 local Lighting = game:GetService("Lighting")
 
 _G.Settings = {
@@ -45,13 +44,14 @@ _G.Settings = {
     FPSSaver = false,
 }
 
--- Safe Click Helper (Guarantees Mouse Up to prevent input freeze)
-local function SafeClick()
-    pcall(function()
-        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 0)
-        task.wait(0.02)
-        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 0)
-    end)
+-- Native Tool Attack (Zero mouse cursor interference)
+local function TriggerAttack()
+    if LocalPlayer.Character then
+        local tool = LocalPlayer.Character:FindFirstChildOfClass("Tool")
+        if tool then
+            tool:Activate()
+        end
+    end
 end
 
 -- ==========================================
@@ -77,7 +77,7 @@ end)
 
 -- Auto Attack / Auto Click / Auto Equip Loops
 task.spawn(function()
-    while task.wait(0.12) do
+    while task.wait(0.1) do
         -- Auto Equip
         if _G.Settings.AutoEquip and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
             local tool = LocalPlayer.Backpack:FindFirstChildOfClass("Tool")
@@ -88,7 +88,7 @@ task.spawn(function()
 
         -- Safe Auto Click
         if _G.Settings.AutoClick then
-            SafeClick()
+            TriggerAttack()
         end
 
         -- Fast Attack Mode
@@ -104,7 +104,7 @@ task.spawn(function()
                     end)
                 end
             else
-                SafeClick()
+                TriggerAttack()
             end
         end
     end
@@ -154,10 +154,10 @@ end
 -- BACKGROUND LOOPS (Movement & Physics)
 -- ==========================================
 local WaterPlatform = Instance.new("Part")
-WaterPlatform.Size = Vector3.new(10, 1, 10)
+WaterPlatform.Size = Vector3.new(30, 1, 30)
 WaterPlatform.Transparency = 1
 WaterPlatform.Anchored = true
-WaterPlatform.CanCollide = true
+WaterPlatform.CanCollide = false
 WaterPlatform.Parent = workspace
 
 local bodyVelocity = nil
@@ -174,11 +174,14 @@ RunService.RenderStepped:Connect(function()
         if _G.Settings.JumpToggle then Humanoid.JumpPower = _G.Settings.JumpPower end
         if _G.Settings.AntiSit and Humanoid.Sit then Humanoid.Sit = false end
 
-        -- Walk on Water
+        -- Fixed Walk on Water (Pinned to Sea Level)
         if _G.Settings.WalkOnWater then
-            WaterPlatform.CFrame = HRP.CFrame * CFrame.new(0, -3.5, 0)
+            WaterPlatform.CanCollide = true
+            -- Anchored at fixed Y = 0 (sea surface) to prevent elevator glitches
+            WaterPlatform.CFrame = CFrame.new(HRP.Position.X, 0, HRP.Position.Z)
         else
-            WaterPlatform.CFrame = CFrame.new(0, 50000, 0)
+            WaterPlatform.CanCollide = false
+            WaterPlatform.CFrame = CFrame.new(0, -500, 0)
         end
 
         -- Fly Logic
@@ -278,7 +281,6 @@ Tabs.Player:AddSlider("FlySpeed", { Title = "Fly Speed", Default = 50, Min = 16,
 -- [ VISUALS TAB ]
 Tabs.Visuals:AddToggle("ESPToggle", { Title = "Player ESP", Default = false, Callback = function(Value) _G.Settings.ESP = Value end })
 
--- One-Time Trigger for Fog
 Tabs.Visuals:AddToggle("RemoveFogToggle", { 
     Title = "Remove Fog", 
     Default = false, 
@@ -296,7 +298,6 @@ Tabs.Visuals:AddToggle("RemoveFogToggle", {
     end 
 })
 
--- Non-Blocking FPS Saver
 Tabs.Visuals:AddToggle("FPSSaverToggle", {
     Title = "FPS Saver",
     Description = "Optimizes engine settings without freezing UI",
@@ -315,4 +316,4 @@ Tabs.Visuals:AddToggle("FPSSaverToggle", {
 
 -- Initialize UI
 Window:SelectTab(1)
-Fluent:Notify({ Title = "HAMI HUB Fixed", Content = "Input queues and rendering loops optimized.", Duration = 4 })
+Fluent:Notify({ Title = "HAMI HUB Fixed", Content = "Mouse focus and water walking physics repaired.", Duration = 4 })
