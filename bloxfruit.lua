@@ -1,238 +1,150 @@
 -- HAMI HUB | Blox Fruits Script
--- Migrated to Rayfield Library (100% supported by Delta Executor)
--- The Orion library was officially deleted by its creator, which is why it was failing to load!
+-- Migrated to Fluent Library (Vertical Layout)
 
-local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
 
-local Window = Rayfield:CreateWindow({
-   Name = "HAMI HUB | Blox Fruits",
-   LoadingTitle = "Loading HAMI HUB...",
-   LoadingSubtitle = "by Hamii0327",
-   ConfigurationSaving = {
-      Enabled = true,
-      FolderName = "HamiHub",
-      FileName = "HamiHubConfig"
-   },
-   Discord = {
-      Enabled = false,
-      Invite = "", 
-      RememberJoins = true 
-   },
-   KeySystem = false, 
+local Window = Fluent:CreateWindow({
+    Title = "HAMI HUB | Blox Fruits",
+    SubTitle = "by Hamii0327",
+    TabWidth = 160,
+    Size = UDim2.fromOffset(580, 460),
+    Acrylic = true,
+    Theme = "Dark",
+    MinimizeKey = Enum.KeyCode.LeftControl
 })
-
--- ==========================================
--- TABS (Matching the layout in your image)
--- ==========================================
-local MainTab = Window:CreateTab("Main", "home")
-local PlayerTab = Window:CreateTab("Player", "user")
-local VisualsTab = Window:CreateTab("Visuals", "eye")
-local CombatTab = Window:CreateTab("Combat", "swords")
-local SettingsTab = Window:CreateTab("Settings", "settings")
 
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
 
-_G.States = {
-    InfJump = false,
-    Noclip = false,
+_G.Settings = {
+    WalkSpeed = 16,
+    JumpPower = 50,
+    SpeedToggle = false,
+    JumpToggle = false,
+    WalkOnWater = false,
+    ESP = false,
 }
 
 -- ==========================================
--- 1. MAIN MENU (Proper Blox Fruits Features)
+-- CORE FUNCTIONS
 -- ==========================================
-local FarmSection = MainTab:CreateSection("Auto Farming & Quests")
 
-MainTab:CreateToggle({
-    Name = "Auto Farm Level (Completes Quests)",
-    CurrentValue = false,
-    Flag = "AutoLevel",
-    Callback = function(Value)
-        -- Logic to check current level, grab appropriate quest, and kill mobs
-    end    
-})
+-- Tween Teleportation
+local function TweenTeleport(TargetCFrame, Speed)
+    if not LocalPlayer.Character or not LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then return end
+    local HRP = LocalPlayer.Character.HumanoidRootPart
+    local Distance = (HRP.Position - TargetCFrame.Position).Magnitude
+    local TweenInfoData = TweenInfo.new(Distance / (Speed or 300), Enum.EasingStyle.Linear)
+    
+    local Tween = TweenService:Create(HRP, TweenInfoData, {CFrame = TargetCFrame})
+    Tween:Play()
+    return Tween
+end
 
-MainTab:CreateToggle({
-    Name = "Auto Farm Nearest Mob",
-    CurrentValue = false,
-    Flag = "AutoNearest",
-    Callback = function(Value)
-        -- Logic to attack whatever is closest
-    end    
-})
+-- Walk on Water Platform
+local WaterPlatform = Instance.new("Part")
+WaterPlatform.Size = Vector3.new(10, 1, 10)
+WaterPlatform.Transparency = 1
+WaterPlatform.Anchored = true
+WaterPlatform.CanCollide = true
+WaterPlatform.Parent = workspace
 
-MainTab:CreateToggle({
-    Name = "Auto Boss Farm",
-    CurrentValue = false,
-    Flag = "AutoBoss",
-    Callback = function(Value)
-        -- Logic to server-hop and farm specific bosses
-    end    
-})
-
-local SeaEventSection = MainTab:CreateSection("Sea Events & Third Sea")
-
-MainTab:CreateToggle({
-    Name = "Auto Leviathan Hunt",
-    CurrentValue = false,
-    Flag = "AutoLeviathan",
-    Callback = function(Value)
-    end    
-})
-
-MainTab:CreateToggle({
-    Name = "Auto Terrorshark / Sea Beast",
-    CurrentValue = false,
-    Flag = "AutoTerrorshark",
-    Callback = function(Value)
-    end    
-})
-
-MainTab:CreateToggle({
-    Name = "Auto Mirage Island",
-    CurrentValue = false,
-    Flag = "AutoMirage",
-    Callback = function(Value)
-    end    
-})
-
--- ==========================================
--- 2. PLAYER MODS (Matching your Image)
--- ==========================================
-local MovementSection = PlayerTab:CreateSection("Movement Mods")
-
-PlayerTab:CreateSlider({
-    Name = "Player Speed",
-    Range = {16, 500},
-    Increment = 1,
-    Suffix = "%",
-    CurrentValue = 16,
-    Flag = "WalkSpeedSlider",
-    Callback = function(Value)
-        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-            LocalPlayer.Character.Humanoid.WalkSpeed = Value
+RunService.RenderStepped:Connect(function()
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        local HRP = LocalPlayer.Character.HumanoidRootPart
+        local Humanoid = LocalPlayer.Character:FindFirstChild("Humanoid")
+        
+        -- Force Movement Stats
+        if _G.Settings.SpeedToggle and Humanoid then
+            Humanoid.WalkSpeed = _G.Settings.WalkSpeed
         end
-    end    
-})
-
-PlayerTab:CreateSlider({
-    Name = "Jump Height",
-    Range = {50, 500},
-    Increment = 1,
-    Suffix = "%",
-    CurrentValue = 50,
-    Flag = "JumpHeightSlider",
-    Callback = function(Value)
-        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-            LocalPlayer.Character.Humanoid.JumpPower = Value
+        if _G.Settings.JumpToggle and Humanoid then
+            Humanoid.JumpPower = _G.Settings.JumpPower
         end
-    end    
-})
-
-PlayerTab:CreateToggle({
-    Name = "Infinite Jump",
-    CurrentValue = false,
-    Flag = "InfJumpToggle",
-    Callback = function(Value)
-        _G.States.InfJump = Value
-    end    
-})
-
-UserInputService.JumpRequest:Connect(function()
-    if _G.States.InfJump and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-        LocalPlayer.Character.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+        
+        -- Walk on Water Logic
+        if _G.Settings.WalkOnWater then
+            WaterPlatform.CFrame = HRP.CFrame * CFrame.new(0, -3.5, 0)
+        else
+            WaterPlatform.CFrame = CFrame.new(0, 50000, 0) -- Move away when disabled
+        end
     end
 end)
 
-PlayerTab:CreateToggle({
-    Name = "No Clip",
-    CurrentValue = false,
-    Flag = "NoclipToggle",
+-- ==========================================
+-- TABS & UI CREATION
+-- ==========================================
+local Tabs = {
+    Main = Window:AddTab({ Title = "Main", Icon = "home" }),
+    Player = Window:AddTab({ Title = "Player", Icon = "user" }),
+    Visuals = Window:AddTab({ Title = "Visuals", Icon = "eye" }),
+    Combat = Window:AddTab({ Title = "Combat", Icon = "swords" })
+}
+
+-- PLAYER TAB
+Tabs.Player:AddToggle("SpeedToggle", {
+    Title = "Enable Custom Speed",
+    Default = false,
     Callback = function(Value)
-        _G.States.Noclip = Value
-    end    
+        _G.Settings.SpeedToggle = Value
+    end
 })
 
-RunService.Stepped:Connect(function()
-    if _G.States.Noclip and LocalPlayer.Character then
-        for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
-            if part:IsA("BasePart") then
-                part.CanCollide = false
+Tabs.Player:AddSlider("WalkSpeed", {
+    Title = "Player Speed",
+    Description = "Overrides default speed.",
+    Default = 16,
+    Min = 16,
+    Max = 300,
+    Rounding = 0,
+    Callback = function(Value)
+        _G.Settings.WalkSpeed = Value
+    end
+})
+
+Tabs.Player:AddToggle("WaterToggle", {
+    Title = "Walk on Water",
+    Description = "Prevents ocean damage.",
+    Default = false,
+    Callback = function(Value)
+        _G.Settings.WalkOnWater = Value
+    end
+})
+
+-- VISUALS TAB
+Tabs.Visuals:AddToggle("ESP", {
+    Title = "Player ESP",
+    Default = false,
+    Callback = function(Value)
+        _G.Settings.ESP = Value
+        if not Value then
+            for _, v in pairs(workspace:GetChildren()) do
+                if v.Name == "ESP_Highlight" then v:Destroy() end
+            end
+        end
+    end
+})
+
+RunService.RenderStepped:Connect(function()
+    if _G.Settings.ESP then
+        for _, player in pairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                if not player.Character:FindFirstChild("ESP_Highlight") then
+                    local highlight = Instance.new("Highlight")
+                    highlight.Name = "ESP_Highlight"
+                    highlight.FillColor = Color3.fromRGB(255, 0, 0)
+                    highlight.Parent = player.Character
+                end
             end
         end
     end
 end)
 
--- ==========================================
--- 3. VISUALS MODS (Matching your Image)
--- ==========================================
-local VisualsSection = VisualsTab:CreateSection("VISUAL MODS")
-
-VisualsTab:CreateToggle({
-    Name = "ESP Master Switch",
-    CurrentValue = false,
-    Flag = "MasterESP",
-    Callback = function(Value)
-        -- Toggles all ESP loops
-    end    
+Window:SelectTab(1)
+Fluent:Notify({
+    Title = "HAMI HUB Loaded",
+    Content = "Fluent UI and core modules activated.",
+    Duration = 5
 })
-
-VisualsTab:CreateToggle({
-    Name = "Players ESP",
-    CurrentValue = false,
-    Flag = "PlayerESP",
-    Callback = function(Value)
-        -- Logic to render boxes/names over players
-    end    
-})
-
-VisualsTab:CreateToggle({
-    Name = "Items (Fruits/Chests) ESP",
-    CurrentValue = false,
-    Flag = "ItemESP",
-    Callback = function(Value)
-        -- Logic to render names over spawned fruits and chests
-    end    
-})
-
--- ==========================================
--- 4. COMBAT & STATS (Proper Blox Fruits Features)
--- ==========================================
-local CombatSection = CombatTab:CreateSection("Mastery & Combat")
-
-CombatTab:CreateToggle({
-    Name = "Fruit Sniper / Bring Fruit",
-    CurrentValue = false,
-    Flag = "FruitSniper",
-    Callback = function(Value)
-        -- Teleports spawned fruits directly to player
-    end    
-})
-
-CombatTab:CreateToggle({
-    Name = "Auto Haki (Aura)",
-    CurrentValue = false,
-    Flag = "AutoHaki",
-    Callback = function(Value)
-        -- Fires remote to enable Haki automatically
-    end    
-})
-
-CombatTab:CreateToggle({
-    Name = "Aimbot (Skills)",
-    CurrentValue = false,
-    Flag = "Aimbot",
-    Callback = function(Value)
-        -- Locks camera or skill direction to nearest player/mob
-    end    
-})
-
-Rayfield:Notify({
-   Title = "Hami Hub Successfully Loaded!",
-   Content = "Enjoy your Blox Fruits features.",
-   Duration = 5,
-   Image = "check",
-})
-
