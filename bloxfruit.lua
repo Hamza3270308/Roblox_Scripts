@@ -1,5 +1,5 @@
 -- HAMI HUB | Blox Fruits Script (Custom UI Edition)
--- Core logic untouched. UI rebuilt from scratch to match reference design.
+-- Core logic untouched. UI rebuilt from scratch. Top bar stats & extra H removed.
 
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
@@ -225,29 +225,6 @@ local Corner = Instance.new("UICorner")
 Corner.CornerRadius = UDim.new(0, 10)
 Corner.Parent = MainFrame
 
--- Top Bar Stats
-local TopBar = Instance.new("Frame")
-TopBar.Size = UDim2.new(1, -220, 0, 50)
-TopBar.Position = UDim2.new(0, 220, 0, 0)
-TopBar.BackgroundTransparency = 1
-TopBar.Parent = MainFrame
-
-local StatsText = Instance.new("TextLabel")
-StatsText.Size = UDim2.new(1, -20, 1, 0)
-StatsText.BackgroundTransparency = 1
-StatsText.RichText = true
-StatsText.TextXAlignment = Enum.TextXAlignment.Right
-StatsText.Font = Enum.Font.GothamMedium
-StatsText.TextSize = 14
-StatsText.TextColor3 = TextColor
-StatsText.Parent = TopBar
-
-RunService.RenderStepped:Connect(function(dt)
-    local fps = math.floor(1 / dt)
-    local timeStr = os.date("%H:%M")
-    StatsText.Text = string.format("%s <font color='#555555'> | </font> FPS <font color='#00FF7F'>%d</font> <font color='#555555'> | </font> %s", timeStr, fps, LocalPlayer.Name)
-end)
-
 -- Sidebar
 local Sidebar = Instance.new("Frame")
 Sidebar.Size = UDim2.new(0, 220, 1, 0)
@@ -268,8 +245,7 @@ local Logo = Instance.new("TextLabel")
 Logo.Size = UDim2.new(1, -20, 0, 60)
 Logo.Position = UDim2.new(0, 20, 0, 0)
 Logo.BackgroundTransparency = 1
-Logo.Text = "<font color='#00FF7F'>H</font> HAMI HUB"
-Logo.RichText = true
+Logo.Text = "HAMI HUB"
 Logo.Font = Enum.Font.GothamBold
 Logo.TextSize = 20
 Logo.TextColor3 = TextColor
@@ -286,10 +262,10 @@ local TabList = Instance.new("UIListLayout")
 TabList.Padding = UDim.new(0, 10)
 TabList.Parent = TabContainer
 
--- Content Area
+-- Content Area (Moved up slightly since top bar is gone)
 local ContentArea = Instance.new("Frame")
-ContentArea.Size = UDim2.new(1, -240, 1, -60)
-ContentArea.Position = UDim2.new(0, 230, 0, 50)
+ContentArea.Size = UDim2.new(1, -240, 1, -40)
+ContentArea.Position = UDim2.new(0, 230, 0, 20)
 ContentArea.BackgroundTransparency = 1
 ContentArea.Parent = MainFrame
 
