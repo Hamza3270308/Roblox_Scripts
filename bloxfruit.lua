@@ -1,4 +1,4 @@
-local Rayfield = loadstring(game:HttpGet('https://sirblood.github.io/Rayfield/'))()
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 local Window = Rayfield:CreateWindow({
    Name = "Hami Hub | Clean All The Leaves",
