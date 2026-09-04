@@ -1,4 +1,6 @@
--- Dungeon Quest | Unified & Direct Input Engine
+-- Dungeon Quest | Active Combat Edition
+-- Direct Left-Click Engine, Low-Level Keypress Abilities, Capped WalkSpeed (38 Max)
+
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -82,27 +84,39 @@ local function getClosestMob()
     return closest
 end
 
--- Direct In-Game Left-Click Attack Execution
-local function performSwordSlash()
+-- Primary Click Execution (Auto Sword / Left Click)
+local function executeLeftClick()
     if not isAlive() then return end
-    local tool = LocalPlayer.Character:FindFirstChildOfClass("Tool")
-    if not tool then
-        for _, item in pairs(LocalPlayer.Backpack:GetChildren()) do
-            if item:IsA("Tool") then
-                LocalPlayer.Character.Humanoid:EquipTool(item)
-                break
-            end
-        end
+    if mouse1click then
+        mouse1click()
+    elseif mouse1press and mouse1release then
+        mouse1press()
+        task.wait(0.01)
+        mouse1release()
+    else
+        local center = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+        VirtualUser:CaptureController()
+        VirtualUser:Button1Down(center)
+        task.wait(0.01)
+        VirtualUser:Button1Up(center)
     end
-
-    local viewportCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
-    VirtualUser:CaptureController()
-    VirtualUser:Button1Down(viewportCenter)
-    task.wait(0.01)
-    VirtualUser:Button1Up(viewportCenter)
 end
 
--- UI Construction
+-- Ability Cast Execution (Q, E, R)
+local function executeKey(key, byteCode)
+    if keypress and keyrelease then
+        keypress(byteCode)
+        task.wait(0.03)
+        keyrelease(byteCode)
+    else
+        VirtualUser:CaptureController()
+        VirtualUser:SetKeyDown(key)
+        task.wait(0.03)
+        VirtualUser:SetKeyUp(key)
+    end
+end
+
+-- Screen UI
 local Screen = Instance.new("ScreenGui")
 Screen.Name = "DungeonQuestHub"
 Screen.ResetOnSpawn = false
@@ -411,7 +425,7 @@ local function CreateSlider(parent, title, min, max, default, callback)
     end)
 end
 
--- Tabs Initialization
+-- Tabs
 local AutoMobLeft, AutoMobRight = CreateTab("AutoMob", true)
 local CombatLeft, CombatRight = CreateTab("Automation", false)
 local AbilitiesLeft, AbilitiesRight = CreateTab("Abilities", false)
@@ -441,8 +455,8 @@ CreateToggle(CombatRight, "Auto Attack + Fast", false, function(state) _G.DQ.Aut
 CreateToggle(AbilitiesLeft, "Auto Abilities (Q,E,R)", false, function(state) _G.DQ.AutoAbilities = state end)
 CreateSlider(AbilitiesRight, "Ability Delay", 0.1, 2, 0.5, function(val) _G.DQ.AbilityDelay = val end)
 
--- [ 4. MOVEMENT TAB ]
-CreateSlider(MovementLeft, "WalkSpeed", 16, 75, 16, function(val) _G.DQ.WalkSpeed = val end)
+-- [ 4. MOVEMENT TAB (Capped at 38) ]
+CreateSlider(MovementLeft, "WalkSpeed", 16, 38, 16, function(val) _G.DQ.WalkSpeed = val end)
 CreateToggle(MovementLeft, "NoClip", false, function(state) _G.DQ.NoClip = state end)
 CreateToggle(MovementRight, "Infinite Jump", false, function(state) _G.DQ.InfJump = state end)
 CreateToggle(MovementRight, "Anti-AFK", true, function(state) _G.DQ.AntiAFK = state end)
@@ -470,7 +484,7 @@ CreateSlider(VisualsLeft, "Field of View", 70, 120, 70, function(val)
 end)
 CreateToggle(VisualsRight, "Skip Dungeon Intro", false, function(state) _G.DQ.SkipIntro = state end)
 
--- [ 6. TELEPORT TAB WITH CONTROL BUTTONS ]
+-- [ 6. TELEPORT TAB ]
 CreateButton(TeleportLeft, "Save Position", function(btn)
     if isAlive() then
         _G.DQ.SavedCFrame = LocalPlayer.Character.HumanoidRootPart.CFrame
@@ -500,9 +514,9 @@ CreateButton(TeleportRight, "Control: Jump 15 Studs", function()
     end
 end)
 
--- Background Loops
+-- Background Automation
 
--- AutoMob Heartbeat Lock
+-- AutoMob (Locks onto nearest mob and faces it)
 RunService.Heartbeat:Connect(function()
     if _G.DQ.AutoMob and isAlive() then
         local target = getClosestMob()
@@ -523,52 +537,55 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 
--- Normal Sword Attack
+-- Auto Sword Normal (0.28s Left-Click Pulse)
 task.spawn(function()
-    while task.wait(0.3) do
+    while task.wait(0.28) do
         if _G.DQ.AutoSwordNormal and isAlive() then
-            performSwordSlash()
+            executeLeftClick()
         end
     end
 end)
 
--- Fast Sword Attack
+-- Auto Attack + Fast (0.07s Left-Click Pulse)
 task.spawn(function()
-    while task.wait(0.08) do
+    while task.wait(0.07) do
         if _G.DQ.AutoAttackFast and isAlive() then
-            performSwordSlash()
+            executeLeftClick()
         end
     end
 end)
 
--- Auto Abilities (Spells: Q, E, R)
+-- Auto Abilities (Q, E, R Key Events)
 task.spawn(function()
-    local abilityKeys = {Enum.KeyCode.Q, Enum.KeyCode.E, Enum.KeyCode.R}
+    local abilities = {
+        {key = Enum.KeyCode.Q, byte = 0x51},
+        {key = Enum.KeyCode.E, byte = 0x45},
+        {key = Enum.KeyCode.R, byte = 0x52}
+    }
     while task.wait(_G.DQ.AbilityDelay or 0.5) do
         if _G.DQ.AutoAbilities and isAlive() then
-            for _, key in ipairs(abilityKeys) do
-                VirtualUser:CaptureController()
-                VirtualUser:SetKeyDown(key)
-                task.wait(0.02)
-                VirtualUser:SetKeyUp(key)
+            for _, ab in ipairs(abilities) do
+                executeKey(ab.key, ab.byte)
+                task.wait(0.03)
             end
         end
     end
 end)
 
--- Micro-Vector WalkSpeed
+-- Micro-Vector WalkSpeed Engine (Capped at 38)
 RunService.Heartbeat:Connect(function(deltaTime)
     if isAlive() and _G.DQ.WalkSpeed > 16 and not _G.DQ.AutoMob then
         local hum = LocalPlayer.Character.Humanoid
         local hrp = LocalPlayer.Character.HumanoidRootPart
         if hum.MoveDirection.Magnitude > 0 then
-            local boost = (_G.DQ.WalkSpeed - 16) * deltaTime
-            hrp.CFrame = hrp.CFrame + (hum.MoveDirection * boost)
+            local safeSpeed = math.clamp(_G.DQ.WalkSpeed, 16, 38)
+            local deltaDistance = (safeSpeed - 16) * deltaTime
+            hrp.CFrame = hrp.CFrame + (hum.MoveDirection * deltaDistance)
         end
     end
 end)
 
--- Visual Highlights
+-- Mob and Boss Visual Highlights
 RunService.RenderStepped:Connect(function()
     if _G.DQ.MobESP or _G.DQ.BossESP then
         for _, mob in pairs(getDungeonMobs()) do
@@ -609,7 +626,7 @@ UIS.JumpRequest:Connect(function()
     end
 end)
 
--- Skip Dungeon Intro
+-- Skip Intro Cutscenes
 task.spawn(function()
     while task.wait(1) do
         if _G.DQ.SkipIntro then
