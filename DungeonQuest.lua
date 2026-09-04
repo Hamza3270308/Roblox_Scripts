@@ -1,6 +1,4 @@
--- Dungeon Quest | Unified Combat & Automation Hub
--- Custom Draggable UI, Multi-Tab Layout, Safe Positioning & Combat Automation
-
+-- Dungeon Quest | Unified Full Edition
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -10,31 +8,24 @@ local Workspace = game:GetService("Workspace")
 local LocalPlayer = Players.LocalPlayer
 local Camera = Workspace.CurrentCamera
 
-if CoreGui:FindFirstChild("DungeonQuestHub") then
-    CoreGui.DungeonQuestHub:Destroy()
+-- Clean up ALL previous instances to prevent the old test UI from showing
+for _, name in ipairs({"CustomGameHub", "DungeonQuestHub", "HamiHubCustom", "JumpForAnimalsHub"}) do
+    local old = CoreGui:FindFirstChild(name)
+    if old then old:Destroy() end
 end
 
 _G.DQ = {
-    -- AutoMob & Combat
     AutoMob = false,
-    AutoMobMode = "Above", -- "Above" or "Behind"
+    AutoMobMode = "Above",
     AboveHeight = 12,
     BehindOffset = 6,
     AutoAttack = false,
-    
-    -- Abilities
     AutoAbilities = false,
     AbilityDelay = 0.5,
-    
-    -- Teleport / Waypoints
     SavedCFrame = nil,
-    
-    -- Visuals & Camera
     MobESP = false,
     BossESP = false,
     FieldOfView = 70,
-    
-    -- Movement & Safety
     NoClip = false,
     InfJump = false,
     AntiAFK = true,
@@ -91,7 +82,7 @@ local function getClosestMob()
 end
 
 -- ==========================================
--- UI CONSTRUCTION (Exact Theme & Scaling)
+-- UI SETUP
 -- ==========================================
 local Screen = Instance.new("ScreenGui")
 Screen.Name = "DungeonQuestHub"
@@ -402,7 +393,7 @@ local function CreateSlider(parent, title, min, max, default, callback)
 end
 
 -- ==========================================
--- TABS SETUP
+-- TABS
 -- ==========================================
 local AutoMobLeft, AutoMobRight = CreateTab("AutoMob", true)
 local AbilitiesLeft, AbilitiesRight = CreateTab("Abilities", false)
@@ -410,7 +401,7 @@ local VisualsLeft, VisualsRight = CreateTab("Visuals", false)
 local TeleportLeft, TeleportRight = CreateTab("Teleport", false)
 local MiscLeft, MiscRight = CreateTab("Misc", false)
 
--- [ AUTOMOB TAB ]
+-- [ 1. AUTOMOB TAB ]
 CreateToggle(AutoMobLeft, "Enable AutoMob", false, function(state) _G.DQ.AutoMob = state end)
 CreateToggle(AutoMobLeft, "Auto Attack", false, function(state) _G.DQ.AutoAttack = state end)
 CreateButton(AutoMobLeft, "Mode: Above / Behind", function(btn)
@@ -426,11 +417,11 @@ end)
 CreateSlider(AutoMobRight, "Above Height", 5, 25, 12, function(val) _G.DQ.AboveHeight = val end)
 CreateSlider(AutoMobRight, "Behind Offset", 3, 15, 6, function(val) _G.DQ.BehindOffset = val end)
 
--- [ ABILITIES TAB ]
+-- [ 2. ABILITIES TAB ]
 CreateToggle(AbilitiesLeft, "Auto Abilities", false, function(state) _G.DQ.AutoAbilities = state end)
 CreateSlider(AbilitiesRight, "Ability Delay", 0.1, 2, 0.5, function(val) _G.DQ.AbilityDelay = val end)
 
--- [ VISUALS TAB ]
+-- [ 3. VISUALS TAB ]
 CreateToggle(VisualsLeft, "Mob Highlights", false, function(state)
     _G.DQ.MobESP = state
     if not state then
@@ -454,7 +445,7 @@ CreateSlider(VisualsLeft, "Field of View", 70, 120, 70, function(val)
     Camera.FieldOfView = val
 end)
 
--- [ TELEPORT TAB ]
+-- [ 4. TELEPORT TAB ]
 CreateButton(TeleportLeft, "Save Current Position", function(btn)
     if isAlive() then
         _G.DQ.SavedCFrame = LocalPlayer.Character.HumanoidRootPart.CFrame
@@ -469,17 +460,17 @@ CreateButton(TeleportRight, "Teleport to Saved", function()
     end
 end)
 
--- [ MISC TAB ]
+-- [ 5. MISC TAB ]
 CreateToggle(MiscLeft, "NoClip", false, function(state) _G.DQ.NoClip = state end)
 CreateToggle(MiscLeft, "Infinite Jump", false, function(state) _G.DQ.InfJump = state end)
 CreateToggle(MiscRight, "Anti-AFK", true, function(state) _G.DQ.AntiAFK = state end)
 CreateToggle(MiscRight, "Skip Dungeon Intro", false, function(state) _G.DQ.SkipIntro = state end)
 
 -- ==========================================
--- BACKGROUND AUTOMATION LOOPS
+-- BACKGROUND LOGIC
 -- ==========================================
 
--- AutoMob Positioning System (Zero Rubberbanding)
+-- AutoMob (Positions to mob smoothly)
 RunService.Heartbeat:Connect(function()
     if _G.DQ.AutoMob and isAlive() then
         local target = getClosestMob()
@@ -487,7 +478,6 @@ RunService.Heartbeat:Connect(function()
             local myHrp = LocalPlayer.Character.HumanoidRootPart
             local targetHrp = target.HumanoidRootPart
 
-            -- Cancel downward gravity momentum
             myHrp.AssemblyLinearVelocity = Vector3.zero
             myHrp.AssemblyAngularVelocity = Vector3.zero
 
@@ -501,7 +491,7 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 
--- Auto Attack / Weapon Clicker
+-- Auto Attack
 task.spawn(function()
     while task.wait(0.12) do
         if _G.DQ.AutoAttack and isAlive() then
@@ -516,9 +506,7 @@ task.spawn(function()
                 end
             end
             
-            if tool then
-                tool:Activate()
-            end
+            if tool then tool:Activate() end
             
             VirtualUser:CaptureController()
             VirtualUser:Button1Down(Vector2.new(500, 500))
@@ -528,7 +516,7 @@ task.spawn(function()
     end
 end)
 
--- Auto Abilities Loop
+-- Auto Abilities
 task.spawn(function()
     local abilityKeys = {Enum.KeyCode.Q, Enum.KeyCode.E, Enum.KeyCode.R}
     while task.wait(_G.DQ.AbilityDelay or 0.5) do
@@ -543,7 +531,7 @@ task.spawn(function()
     end
 end)
 
--- Skip Intro Cinematic / Camera
+-- Skip Intro
 task.spawn(function()
     while task.wait(1) do
         if _G.DQ.SkipIntro then
@@ -561,7 +549,7 @@ task.spawn(function()
     end
 end)
 
--- ESP Rendering Loop
+-- Visuals
 RunService.RenderStepped:Connect(function()
     if _G.DQ.MobESP or _G.DQ.BossESP then
         for _, mob in pairs(getDungeonMobs()) do
@@ -584,7 +572,7 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- NoClip Implementation
+-- NoClip
 RunService.Stepped:Connect(function()
     if _G.DQ.NoClip and isAlive() then
         for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
@@ -595,7 +583,7 @@ RunService.Stepped:Connect(function()
     end
 end)
 
--- Infinite Jump Hook
+-- Infinite Jump
 UIS.JumpRequest:Connect(function()
     if _G.DQ.InfJump and isAlive() then
         LocalPlayer.Character.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
