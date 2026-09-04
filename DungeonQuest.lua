@@ -1,4 +1,4 @@
--- Dungeon Quest | Unified Combat & Automation Hub (Fixed Attacks & Movement)
+-- Dungeon Quest | Unified & Direct Input Engine
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -16,26 +16,16 @@ end
 _G.DQ = {
     AutoMob = false,
     AutoMobMode = "Above",
-    AboveHeight = 12,
+    AboveHeight = 11,
     BehindOffset = 6,
-    
-    -- Attacks
     AutoSwordNormal = false,
     AutoAttackFast = false,
-    
-    -- Abilities
     AutoAbilities = false,
     AbilityDelay = 0.5,
-    
-    -- Waypoints
     SavedCFrame = nil,
-    
-    -- Visuals
     MobESP = false,
     BossESP = false,
     FieldOfView = 70,
-    
-    -- Movement & Safety
     WalkSpeed = 16,
     NoClip = false,
     InfJump = false,
@@ -92,40 +82,27 @@ local function getClosestMob()
     return closest
 end
 
--- Dedicated Weapon Execution
-local function strikeTarget(targetMob)
-    if not isAlive() or not targetMob then return end
-    local char = LocalPlayer.Character
-    local tool = char:FindFirstChildOfClass("Tool")
-    
+-- Direct In-Game Left-Click Attack Execution
+local function performSwordSlash()
+    if not isAlive() then return end
+    local tool = LocalPlayer.Character:FindFirstChildOfClass("Tool")
     if not tool then
         for _, item in pairs(LocalPlayer.Backpack:GetChildren()) do
             if item:IsA("Tool") then
-                char.Humanoid:EquipTool(item)
-                tool = item
-                task.wait(0.05)
+                LocalPlayer.Character.Humanoid:EquipTool(item)
                 break
             end
         end
     end
-    
-    if tool then
-        tool:Activate()
-        
-        -- Fire internal remotes if present in tool
-        for _, remote in pairs(tool:GetDescendants()) do
-            if remote:IsA("RemoteEvent") then
-                pcall(function()
-                    remote:FireServer(targetMob, targetMob.HumanoidRootPart.Position)
-                end)
-            end
-        end
-    end
+
+    local viewportCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+    VirtualUser:CaptureController()
+    VirtualUser:Button1Down(viewportCenter)
+    task.wait(0.01)
+    VirtualUser:Button1Up(viewportCenter)
 end
 
--- ==========================================
--- UI SETUP
--- ==========================================
+-- UI Construction
 local Screen = Instance.new("ScreenGui")
 Screen.Name = "DungeonQuestHub"
 Screen.ResetOnSpawn = false
@@ -434,9 +411,7 @@ local function CreateSlider(parent, title, min, max, default, callback)
     end)
 end
 
--- ==========================================
--- TABS INITIALIZATION
--- ==========================================
+-- Tabs Initialization
 local AutoMobLeft, AutoMobRight = CreateTab("AutoMob", true)
 local CombatLeft, CombatRight = CreateTab("Automation", false)
 local AbilitiesLeft, AbilitiesRight = CreateTab("Abilities", false)
@@ -455,15 +430,15 @@ CreateButton(AutoMobLeft, "Mode: Above / Behind", function(btn)
         btn.Text = "Mode: Above"
     end
 end)
-CreateSlider(AutoMobRight, "Above Height", 5, 25, 12, function(val) _G.DQ.AboveHeight = val end)
+CreateSlider(AutoMobRight, "Above Height", 5, 25, 11, function(val) _G.DQ.AboveHeight = val end)
 CreateSlider(AutoMobRight, "Behind Offset", 3, 15, 6, function(val) _G.DQ.BehindOffset = val end)
 
--- [ 2. AUTOMATION / COMBAT TAB ]
+-- [ 2. AUTOMATION TAB ]
 CreateToggle(CombatLeft, "Auto Sword Normal", false, function(state) _G.DQ.AutoSwordNormal = state end)
 CreateToggle(CombatRight, "Auto Attack + Fast", false, function(state) _G.DQ.AutoAttackFast = state end)
 
 -- [ 3. ABILITIES TAB ]
-CreateToggle(AbilitiesLeft, "Auto Abilities", false, function(state) _G.DQ.AutoAbilities = state end)
+CreateToggle(AbilitiesLeft, "Auto Abilities (Q,E,R)", false, function(state) _G.DQ.AutoAbilities = state end)
 CreateSlider(AbilitiesRight, "Ability Delay", 0.1, 2, 0.5, function(val) _G.DQ.AbilityDelay = val end)
 
 -- [ 4. MOVEMENT TAB ]
@@ -495,7 +470,7 @@ CreateSlider(VisualsLeft, "Field of View", 70, 120, 70, function(val)
 end)
 CreateToggle(VisualsRight, "Skip Dungeon Intro", false, function(state) _G.DQ.SkipIntro = state end)
 
--- [ 6. TELEPORT TAB ]
+-- [ 6. TELEPORT TAB WITH CONTROL BUTTONS ]
 CreateButton(TeleportLeft, "Save Position", function(btn)
     if isAlive() then
         _G.DQ.SavedCFrame = LocalPlayer.Character.HumanoidRootPart.CFrame
@@ -503,17 +478,31 @@ CreateButton(TeleportLeft, "Save Position", function(btn)
         task.delay(1.5, function() btn.Text = "Save Position" end)
     end
 end)
-CreateButton(TeleportRight, "Load Position", function()
+CreateButton(TeleportLeft, "Load Position", function()
     if isAlive() and _G.DQ.SavedCFrame then
         LocalPlayer.Character.HumanoidRootPart.CFrame = _G.DQ.SavedCFrame
     end
 end)
+CreateButton(TeleportRight, "Control: Land on Floor", function()
+    if isAlive() then
+        local hrp = LocalPlayer.Character.HumanoidRootPart
+        local ray = Ray.new(hrp.Position, Vector3.new(0, -200, 0))
+        local hit, hitPos = Workspace:FindPartOnRayWithIgnoreList(ray, {LocalPlayer.Character})
+        if hit then
+            hrp.CFrame = CFrame.new(hitPos + Vector3.new(0, 3, 0))
+        end
+    end
+end)
+CreateButton(TeleportRight, "Control: Jump 15 Studs", function()
+    if isAlive() then
+        local hrp = LocalPlayer.Character.HumanoidRootPart
+        hrp.CFrame = hrp.CFrame + Vector3.new(0, 15, 0)
+    end
+end)
 
--- ==========================================
--- BACKGROUND LOGIC & ENGINES
--- ==========================================
+-- Background Loops
 
--- AutoMob Positioning
+-- AutoMob Heartbeat Lock
 RunService.Heartbeat:Connect(function()
     if _G.DQ.AutoMob and isAlive() then
         local target = getClosestMob()
@@ -534,31 +523,25 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 
--- Auto Sword Normal (Standard Interval)
+-- Normal Sword Attack
 task.spawn(function()
-    while task.wait(0.25) do
+    while task.wait(0.3) do
         if _G.DQ.AutoSwordNormal and isAlive() then
-            local target = getClosestMob()
-            if target then
-                strikeTarget(target)
-            end
+            performSwordSlash()
         end
     end
 end)
 
--- Auto Attack + Fast (Heartbeat Pulse)
+-- Fast Sword Attack
 task.spawn(function()
-    while task.wait(0.06) do
+    while task.wait(0.08) do
         if _G.DQ.AutoAttackFast and isAlive() then
-            local target = getClosestMob()
-            if target then
-                strikeTarget(target)
-            end
+            performSwordSlash()
         end
     end
 end)
 
--- Auto Abilities Loop
+-- Auto Abilities (Spells: Q, E, R)
 task.spawn(function()
     local abilityKeys = {Enum.KeyCode.Q, Enum.KeyCode.E, Enum.KeyCode.R}
     while task.wait(_G.DQ.AbilityDelay or 0.5) do
@@ -566,22 +549,21 @@ task.spawn(function()
             for _, key in ipairs(abilityKeys) do
                 VirtualUser:CaptureController()
                 VirtualUser:SetKeyDown(key)
-                task.wait(0.03)
+                task.wait(0.02)
                 VirtualUser:SetKeyUp(key)
             end
         end
     end
 end)
 
--- Safe Micro-Vector WalkSpeed Engine (Mitigates Rubberbanding)
+-- Micro-Vector WalkSpeed
 RunService.Heartbeat:Connect(function(deltaTime)
     if isAlive() and _G.DQ.WalkSpeed > 16 and not _G.DQ.AutoMob then
         local hum = LocalPlayer.Character.Humanoid
         local hrp = LocalPlayer.Character.HumanoidRootPart
-        
         if hum.MoveDirection.Magnitude > 0 then
-            local boostFactor = (_G.DQ.WalkSpeed - 16) * deltaTime
-            hrp.CFrame = hrp.CFrame + (hum.MoveDirection * boostFactor)
+            local boost = (_G.DQ.WalkSpeed - 16) * deltaTime
+            hrp.CFrame = hrp.CFrame + (hum.MoveDirection * boost)
         end
     end
 end)
@@ -624,6 +606,24 @@ end)
 UIS.JumpRequest:Connect(function()
     if _G.DQ.InfJump and isAlive() then
         LocalPlayer.Character.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+    end
+end)
+
+-- Skip Dungeon Intro
+task.spawn(function()
+    while task.wait(1) do
+        if _G.DQ.SkipIntro then
+            local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
+            if playerGui then
+                local intro = playerGui:FindFirstChild("introGui") or playerGui:FindFirstChild("cinematic") or playerGui:FindFirstChild("cutscene")
+                if intro and intro.Enabled then
+                    intro.Enabled = false
+                end
+            end
+            if Camera.CameraType ~= Enum.CameraType.Custom then
+                Camera.CameraType = Enum.CameraType.Custom
+            end
+        end
     end
 end)
 
